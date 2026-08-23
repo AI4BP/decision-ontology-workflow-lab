@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:owl="http://www.w3.org/2002/07/owl#"
+         xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+         xmlns:ont="http://example.org/procurement#"
+         xmlns:map="http://example.org/procurement/mapping#"
+         xml:base="http://example.org/procurement">
+
+  <owl:Ontology rdf:about="http://example.org/procurement">
+    <rdfs:label>Procurement Ontology</rdfs:label>
+    <rdfs:comment>Teaching ontology for the Purchase Order Approval workflow. Business rule: orders with an amount above 10,000 require manager approval (see gateway "Amount &gt; 10,000?" in purchase-order-approval.bpmn). The "ont:" annotations (isIdentifier, cardinality, icon, color) follow the Ontology Playground / Fabric IQ RDF conventions; the "map:" annotation properties carry the database binding (table, column, row filter) for automatic mapping generation. Reasoning-relevant axioms (subclass, transitivity) are inert in flat tools: the Playground and Fabric IQ import the elements and ignore the axioms; Stardog uses them (see procurement-rules.ttl for the rule layer).</rdfs:comment>
+  </owl:Ontology>
+
+  <!-- ========== Mapping annotation properties ========== -->
+  <owl:AnnotationProperty rdf:about="http://example.org/procurement/mapping#sourceTable">
+    <rdfs:comment>Source table (schema.sql) and CSV file stem providing instances of this class.</rdfs:comment>
+  </owl:AnnotationProperty>
+  <owl:AnnotationProperty rdf:about="http://example.org/procurement/mapping#sourceColumn">
+    <rdfs:comment>Source column providing values for this property; for object properties this is the foreign key column.</rdfs:comment>
+  </owl:AnnotationProperty>
+  <owl:AnnotationProperty rdf:about="http://example.org/procurement/mapping#sourceFilter">
+    <rdfs:comment>Optional row filter in the form column=value, e.g. is_manager=true selects Manager instances from the employees table.</rdfs:comment>
+  </owl:AnnotationProperty>
+
+  <!-- ========== Classes ========== -->
+  <owl:Class rdf:about="http://example.org/procurement#PurchaseOrder">
+    <rdfs:comment>A purchase order submitted by an employee to a supplier. Orders above 10,000 require manager approval; smaller orders are auto-approved.</rdfs:comment>
+    <ont:icon>&#128230;</ont:icon>
+    <ont:color>#4C9AFF</ont:color>
+    <map:sourceTable>purchase_orders</map:sourceTable>
+  </owl:Class>
+  <owl:Class rdf:about="http://example.org/procurement#Employee">
+    <rdfs:comment>A person employed by the company who can submit purchase orders.</rdfs:comment>
+    <ont:icon>&#128100;</ont:icon>
+    <ont:color>#36B37E</ont:color>
+    <map:sourceTable>employees</map:sourceTable>
+  </owl:Class>
+  <owl:Class rdf:about="http://example.org/procurement#Manager">
+    <rdfs:comment>An employee with approval authority. Subclass of Employee: instances are employees with is_manager = true, so reasoners infer them to be employees as well. In the Stardog variant, Manager membership can also be left unmapped and inferred from the range of approvedBy.</rdfs:comment>
+    <rdfs:subClassOf rdf:resource="http://example.org/procurement#Employee"/>
+    <ont:icon>&#11088;</ont:icon>
+    <ont:color>#00B8D9</ont:color>
+    <map:sourceTable>employees</map:sourceTable>
+    <map:sourceFilter>is_manager=true</map:sourceFilter>
+  </owl:Class>
+  <owl:Class rdf:about="http://example.org/procurement#Supplier">
+    <rdfs:comment>A company that delivers goods or services. The rating (0-5) enables risk queries, e.g. high-value orders from low-rated suppliers.</rdfs:comment>
+    <ont:icon>&#127981;</ont:icon>
+    <ont:color>#FFAB00</ont:color>
+    <map:sourceTable>suppliers</map:sourceTable>
+  </owl:Class>
+  <owl:Class rdf:about="http://example.org/procurement#Department">
+    <rdfs:comment>An organisational unit with an annual procurement budget. Departments form a hierarchy via partOf (transitive).</rdfs:comment>
+    <ont:icon>&#127970;</ont:icon>
+    <ont:color>#6554C0</ont:color>
+    <map:sourceTable>departments</map:sourceTable>
+  </owl:Class>
+
+  <!-- ========== Object properties ========== -->
+  <owl:ObjectProperty rdf:about="http://example.org/procurement#submittedBy">
+    <rdfs:comment>Links an order to the employee who submitted it (FK purchase_orders.submitted_by to employees.id).</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#PurchaseOrder"/>
+    <rdfs:range rdf:resource="http://example.org/procurement#Employee"/>
+    <ont:cardinality>many-to-one</ont:cardinality>
+    <map:sourceColumn>submitted_by</map:sourceColumn>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="http://example.org/procurement#approvedBy">
+    <rdfs:comment>Links an order to the manager who approved or rejected it. Mandatory for orders above 10,000 (FK purchase_orders.approved_by to employees.id, managers only). Reasoning demo: the range Manager lets Stardog infer managerhood of approvers without explicit typing.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#PurchaseOrder"/>
+    <rdfs:range rdf:resource="http://example.org/procurement#Manager"/>
+    <ont:cardinality>many-to-one</ont:cardinality>
+    <map:sourceColumn>approved_by</map:sourceColumn>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="http://example.org/procurement#hasSupplier">
+    <rdfs:comment>Links an order to its supplier (FK purchase_orders.supplier_id to suppliers.id).</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#PurchaseOrder"/>
+    <rdfs:range rdf:resource="http://example.org/procurement#Supplier"/>
+    <ont:cardinality>many-to-one</ont:cardinality>
+    <map:sourceColumn>supplier_id</map:sourceColumn>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="http://example.org/procurement#worksIn">
+    <rdfs:comment>Links an employee to their department (FK employees.department_id to departments.id).</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Employee"/>
+    <rdfs:range rdf:resource="http://example.org/procurement#Department"/>
+    <ont:cardinality>many-to-one</ont:cardinality>
+    <map:sourceColumn>department_id</map:sourceColumn>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="http://example.org/procurement#partOf">
+    <rdfs:comment>Organisational hierarchy between departments (FK departments.parent_id to departments.id). Declared transitive: Stardog infers indirect membership across levels; Fabric IQ and the Ontology Playground import the relationship and ignore the transitivity axiom.</rdfs:comment>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Department"/>
+    <rdfs:range rdf:resource="http://example.org/procurement#Department"/>
+    <ont:cardinality>many-to-one</ont:cardinality>
+    <map:sourceColumn>parent_id</map:sourceColumn>
+  </owl:ObjectProperty>
+
+  <!-- ========== Datatype properties: PurchaseOrder ========== -->
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#orderId">
+    <rdfs:comment>Unique identifier of a purchase order (primary key of purchase_orders).</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#PurchaseOrder"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+    <ont:isIdentifier>true</ont:isIdentifier>
+    <map:sourceColumn>id</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#amount">
+    <rdfs:comment>Total order amount in the currency given by the currency property. Drives the approval decision (threshold 10,000) and the Stardog rule that infers HighValueOrder membership.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#PurchaseOrder"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <map:sourceColumn>amount</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#currency">
+    <rdfs:comment>ISO 4217 currency code of the order amount, e.g. CHF, EUR, USD.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#PurchaseOrder"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <map:sourceColumn>currency</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#quantity">
+    <rdfs:comment>Number of units ordered.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#PurchaseOrder"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+    <map:sourceColumn>quantity</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#orderDate">
+    <rdfs:comment>Date the order was submitted.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#PurchaseOrder"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <map:sourceColumn>order_date</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#status">
+    <rdfs:comment>Lifecycle status of the order: pending, approved or rejected.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#PurchaseOrder"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <map:sourceColumn>status</map:sourceColumn>
+  </owl:DatatypeProperty>
+
+  <!-- ========== Datatype properties: Employee ========== -->
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#employeeId">
+    <rdfs:comment>Unique identifier of an employee (primary key of employees).</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Employee"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+    <ont:isIdentifier>true</ont:isIdentifier>
+    <map:sourceColumn>id</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#employeeName">
+    <rdfs:comment>Full name of the employee.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Employee"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <map:sourceColumn>name</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#email">
+    <rdfs:comment>Work email address of the employee.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Employee"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <map:sourceColumn>email</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#hireDate">
+    <rdfs:comment>Date the employee joined the company; enables seniority queries.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Employee"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#date"/>
+    <map:sourceColumn>hire_date</map:sourceColumn>
+  </owl:DatatypeProperty>
+
+  <!-- ========== Datatype properties: Manager ========== -->
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#managerId">
+    <rdfs:comment>Unique identifier of a manager; same value space as employeeId, since managers are employees (employees.id where is_manager = true).</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Manager"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+    <ont:isIdentifier>true</ont:isIdentifier>
+    <map:sourceColumn>id</map:sourceColumn>
+  </owl:DatatypeProperty>
+
+  <!-- ========== Datatype properties: Supplier ========== -->
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#supplierId">
+    <rdfs:comment>Unique identifier of a supplier (primary key of suppliers).</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Supplier"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+    <ont:isIdentifier>true</ont:isIdentifier>
+    <map:sourceColumn>id</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#supplierName">
+    <rdfs:comment>Name of the supplier company.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Supplier"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <map:sourceColumn>name</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#country">
+    <rdfs:comment>Country where the supplier is based.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Supplier"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <map:sourceColumn>country</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#rating">
+    <rdfs:comment>Supplier rating from 0.0 (poor) to 5.0 (excellent); used for risk analysis of high-value orders.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Supplier"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <map:sourceColumn>rating</map:sourceColumn>
+  </owl:DatatypeProperty>
+
+  <!-- ========== Datatype properties: Department ========== -->
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#departmentId">
+    <rdfs:comment>Unique identifier of a department (primary key of departments).</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Department"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+    <ont:isIdentifier>true</ont:isIdentifier>
+    <map:sourceColumn>id</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#departmentName">
+    <rdfs:comment>Name of the department.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Department"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    <map:sourceColumn>name</map:sourceColumn>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="http://example.org/procurement#budget">
+    <rdfs:comment>Annual procurement budget of the department in CHF; combined with the transitive partOf hierarchy it enables budget rollup queries.</rdfs:comment>
+    <rdfs:domain rdf:resource="http://example.org/procurement#Department"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+    <map:sourceColumn>budget</map:sourceColumn>
+  </owl:DatatypeProperty>
+
+</rdf:RDF>

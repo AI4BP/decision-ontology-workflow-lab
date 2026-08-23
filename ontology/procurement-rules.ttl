@@ -1,0 +1,36 @@
+# Stardog rules for the procurement knowledge graph (Stardog Rule Syntax, SRS).
+# Stardog detects IF/THEN rules embedded in Turtle files automatically.
+# Load into the "procurement" database (Studio: Load Data, or pystardog
+# conn.add(stardog.content.File("procurement-rules.ttl"))).
+# Rules fire only when reasoning is enabled (reasoning.type = SL, the default).
+#
+# The derived classes :HighValueOrder and :ApprovalViolation are deliberately
+# NOT declared as owl:Class in procurement-ontology.rdf: they exist only as
+# inferred memberships, which keeps the base ontology clean for the Ontology
+# Playground and Fabric IQ (every declared entity type there needs an
+# identifier property and a data binding).
+
+@prefix : <http://example.org/procurement#> .
+
+# Rule 1: the BPMN gateway as an inference rule.
+# Derives class membership from the amount - mirroring "Amount > 10,000?".
+IF {
+  ?o a :PurchaseOrder ;
+     :amount ?a .
+  FILTER(?a > 10000)
+}
+THEN {
+  ?o a :HighValueOrder .
+}
+
+# Rule 2: derive approval violations.
+# A high-value order without a manager approver is an ApprovalViolation.
+# Note: ?m a :Manager itself can be inferred (range of :approvedBy), so rules
+# and OWL axioms compose.
+IF {
+  ?o a :HighValueOrder .
+  FILTER NOT EXISTS { ?o :approvedBy ?m . ?m a :Manager }
+}
+THEN {
+  ?o a :ApprovalViolation .
+}

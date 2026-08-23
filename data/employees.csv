@@ -1,0 +1,5 @@
+id,name,email,department_id,is_manager,hire_date
+1,Alice Smith,alice.smith@example.com,1,true,2019-03-15
+2,Bob Jones,bob.jones@example.com,2,false,2023-06-01
+3,Carol White,carol.white@example.com,1,false,2021-11-20
+4,Dave Brown,dave.brown@example.com,3,true,2017-01-10

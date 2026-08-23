@@ -1,0 +1,6 @@
+id,name,budget,parent_id
+4,Corporate,1000000.00,
+1,Procurement,250000.00,4
+2,Engineering,500000.00,4
+3,Finance,150000.00,4
+5,Indirect Procurement,80000.00,1
