@@ -25,7 +25,8 @@ decision-ontology-workflow-lab/
 ├── .gitignore
 ├── .env.example                    # credential variable names (no values)
 ├── process/
-│   └── purchase-order-approval.bpmn
+│   ├── purchase-order-approval.bpmn          # external-task variant (1c)
+│   └── purchase-order-approval-agentic.bpmn  # AI-agent/MCP variant (2h)
 ├── ontology/
 │   ├── procurement-ontology.rdf
 │   └── procurement-rules.ttl       # Stardog-only reasoning layer
@@ -379,6 +380,55 @@ Which managers approved orders in August 2026, and what is the total amount per 
 List all orders above 10,000 without an approver, grouped by supplier country.
 ```
 
+### 2h. Alternative: Validate Order as an agentic service task (MCP)
+
+The service task `Validate order` can also be implemented **agentically**
+instead of with the deterministic SPARQL worker (1c) — same task, same
+contract (a `valid` verdict), different enforcement. The model file
+`process/purchase-order-approval-agentic.bpmn` wires the task to the
+**CIB seven AI Agent connector**, which uses the **Fabric IQ ontology as an
+MCP server**.
+
+Fabric IQ side (ontology as MCP server, preview):
+
+1. Open the ontology item in Fabric and read the IDs from the browser URL:
+   `https://app.fabric.microsoft.com/groups/<workspace-id>/ontologies/<ontology-item-id>`.
+2. Build the MCP server URL:
+   `https://api.fabric.microsoft.com/v1/mcp/dataPlane/workspaces/<workspace-id>/items/<ontology-item-id>/ontologyEndpoint`.
+
+CIB seven side (AI Agent connector, since 2.2):
+
+- Apply the template **CIB seven - AI Agent** (id
+  `org.cibseven.connect.ai.agent`, connectorId `cibseven-ai-agent`) to the
+  service task.
+- Key inputs: `agentName` and `message` (required); `instruction` carries the
+  business rule and the output contract; `mcpServers` registers the ontology
+  endpoint as a JSON array:
+
+  ```json
+  [{"name": "fabriciq",
+    "url": "https://api.fabric.microsoft.com/v1/mcp/dataPlane/workspaces/${fabricWorkspaceId}/items/${fabricOntologyId}/ontologyEndpoint",
+    "headers": {"Authorization": "Bearer ${fabricToken}"}}]
+  ```
+
+  The `name` becomes the tool prefix: the model sees the ontology tools as
+  `fabriciq__<tool>`.
+- The agent's answer arrives as plain text in `${output}`; the instruction
+  forces JSON (`{"valid": true|false, "reason": "..."}`), which a following
+  step parses with Spin, e.g. `${S(agentOutput).prop("valid").booleanValue()}`.
+  Keep a fallback path for unparseable output.
+- Mark the task `camunda:asyncBefore="true"` so the job executor handles
+  retries (LLM calls are slow and can fail transiently).
+- Audit: every MCP tool call is recorded in the chat-log variable with
+  provenance (server prefix, URL, original tool name), and the output is
+  marked AI-generated via `${outputAiMeta}` — the audit trail for the
+  agentic verification path.
+
+Teaching contrast: 1c is deterministic (a SPARQL ASK — reproducible, exact),
+2h is agentic (tool use grounded in the ontology MCP server — flexible,
+non-deterministic, but audited). The process contract is identical: a
+`valid` flag for the order.
+
 ---
 
 ## SPARQL query gallery
@@ -436,6 +486,10 @@ SELECT ?person ?name WHERE {
   system prompt. Comparing deterministic (process, query, rule engine) vs.
   reactive (Activator) vs. probabilistic (agent) rule enforcement is the core
   exercise.
+- The `Validate order` task has two interchangeable implementations:
+  deterministic (SPARQL worker, 1c) and agentic (MCP tool use, 2h) — same
+  contract, different enforcement; compare their audit trails (worker logs
+  vs. engine history plus MCP provenance in the chat log).
 - Reasoning is the clean Stardog-vs-Fabric-IQ contrast: same files, same
   data — but only Stardog derives new facts (subclass, range, transitivity,
   rules).

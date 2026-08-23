@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1j46yf9" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="PurchaseOrderApproval" name="Purchase Order Approval" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Order submitted">
+      <bpmn:outgoing>Flow_031zvjn</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_031zvjn" sourceRef="StartEvent_1" targetRef="Activity_1l23gtt" />
+    <bpmn:exclusiveGateway id="Gateway_1l7tfej" name="Amount &#62; 10,000?">
+      <bpmn:incoming>Flow_066lx7g</bpmn:incoming>
+      <bpmn:outgoing>Flow_02g6ijs</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0cgdmv1</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_066lx7g" sourceRef="Activity_1l23gtt" targetRef="Gateway_1l7tfej" />
+    <bpmn:sequenceFlow id="Flow_02g6ijs" name="yes" sourceRef="Gateway_1l7tfej" targetRef="Activity_1vd404l">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${amount &gt; 10000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:endEvent id="Event_1bed2er" name="Order processed">
+      <bpmn:incoming>Flow_1574e19</bpmn:incoming>
+      <bpmn:incoming>Flow_1l3mwik</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="Activity_1l23gtt" name="Validate order (SPARQL)" camunda:type="external" camunda:topic="validate-order">
+      <bpmn:incoming>Flow_031zvjn</bpmn:incoming>
+      <bpmn:outgoing>Flow_066lx7g</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Activity_1vd404l" name="Manager approval">
+      <bpmn:incoming>Flow_02g6ijs</bpmn:incoming>
+      <bpmn:outgoing>Flow_1574e19</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_1574e19" sourceRef="Activity_1vd404l" targetRef="Event_1bed2er" />
+    <bpmn:sequenceFlow id="Flow_0cgdmv1" name="no" sourceRef="Gateway_1l7tfej" targetRef="Activity_0m2b1mu">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${amount &lt;= 10000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:serviceTask id="Activity_0m2b1mu" name="Auto-approve order" camunda:delegateExpression="{$true}">
+      <bpmn:incoming>Flow_0cgdmv1</bpmn:incoming>
+      <bpmn:outgoing>Flow_1l3mwik</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_1l3mwik" sourceRef="Activity_0m2b1mu" targetRef="Event_1bed2er" />
+    <bpmn:serviceTask id="Activity_16dhov5" name="Validate order (AI agent)" camunda:modelerTemplate="org.cibseven.connect.ai.agent" camunda:modelerTemplateVersion="1" camunda:asyncBefore="true" implementation="##WebService">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="agentName">OrderValidator</camunda:inputParameter>
+            <camunda:inputParameter name="message">Validate order ${orderId}: check it against the approval rule using the ontology tools and return the JSON verdict.</camunda:inputParameter>
+            <camunda:inputParameter name="instruction">You are the order validation agent in the purchase order approval process. Business rule: orders with an amount above 10,000 (any currency) require approval by a Manager; orders at or below 10,000 are auto-approved. Use the ontology MCP tools (prefix fabriciq__) to look up the order, its amount, and its approver. Answer ONLY as JSON: {"valid": true|false, "reason": "..."}. Never invent data; if the order cannot be found, return {"valid": false, "reason": "order not found"}.</camunda:inputParameter>
+            <camunda:inputParameter name="mcpServers">[{"name": "fabriciq", "url": "https://api.fabric.microsoft.com/v1/mcp/dataPlane/workspaces/${fabricWorkspaceId}/items/${fabricOntologyId}/ontologyEndpoint", "headers": {"Authorization": "Bearer ${fabricToken}"}}]</camunda:inputParameter>
+            <camunda:inputParameter name="apiKey">${apiKey}</camunda:inputParameter>
+            <camunda:outputParameter name="agentOutput">${output}</camunda:outputParameter>
+            <camunda:outputParameter name="agentOutput_aiMeta">${outputAiMeta}</camunda:outputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>cibseven-ai-agent</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+    </bpmn:serviceTask>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="PurchaseOrderApproval">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="131" y="145" width="79" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1l7tfej_di" bpmnElement="Gateway_1l7tfej" isMarkerVisible="true">
+        <dc:Bounds x="395" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="396" y="65" width="48" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1bed2er_di" bpmnElement="Event_1bed2er">
+        <dc:Bounds x="682" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="659" y="78" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_16zl2p0_di" bpmnElement="Activity_1l23gtt">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_12nm9w3_di" bpmnElement="Activity_1vd404l">
+        <dc:Bounds x="500" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_13j6ham_di" bpmnElement="Activity_0m2b1mu">
+        <dc:Bounds x="500" y="190" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateOrder_di" bpmnElement="Activity_16dhov5">
+        <dc:Bounds x="240" y="190" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_031zvjn_di" bpmnElement="Flow_031zvjn">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_066lx7g_di" bpmnElement="Flow_066lx7g">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="395" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_02g6ijs_di" bpmnElement="Flow_02g6ijs">
+        <di:waypoint x="445" y="120" />
+        <di:waypoint x="500" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="464" y="102" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1574e19_di" bpmnElement="Flow_1574e19">
+        <di:waypoint x="600" y="120" />
+        <di:waypoint x="682" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0cgdmv1_di" bpmnElement="Flow_0cgdmv1">
+        <di:waypoint x="420" y="145" />
+        <di:waypoint x="420" y="230" />
+        <di:waypoint x="500" y="230" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="429" y="185" width="13" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1l3mwik_di" bpmnElement="Flow_1l3mwik">
+        <di:waypoint x="600" y="230" />
+        <di:waypoint x="700" y="230" />
+        <di:waypoint x="700" y="138" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
