@@ -60,7 +60,7 @@ Naming conventions: table `purchase_orders` ↔ class `PurchaseOrder`; column
 
 ---
 
-## Variant 0 — Design
+## Business Process (Worflow) and Ontology
 
 ### 0a. Extend the BPMN model
 
