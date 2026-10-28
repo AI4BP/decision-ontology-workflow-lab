@@ -1,8 +1,7 @@
 # Stardog rules for the procurement knowledge graph (Stardog Rule Syntax, SRS).
 # Stardog detects IF/THEN rules embedded in Turtle files automatically.
-# Load into the "procurement" database (Studio: Load Data, or pystardog
-# conn.add(stardog.content.File("procurement-rules.ttl"))).
-# Rules fire only when reasoning is enabled (reasoning.type = SL, the default).
+# Load into the procurement schema graph tag:stardog:api:context:schema.
+# Query reasoning must be enabled. Rule 2 additionally requires Stride.
 #
 # The derived classes :HighValueOrder and :ApprovalViolation are deliberately
 # NOT declared as owl:Class in procurement-ontology.rdf: they exist only as
@@ -12,8 +11,9 @@
 
 @prefix : <http://example.org/procurement#> .
 
-# Rule 1: the BPMN gateway as an inference rule.
-# Derives class membership from the amount - mirroring "Amount > 10,000?".
+# Rule 1: infer the classification consumed by the BPMN gateway.
+# Derives class membership from the amount - supplying "Manager approval required?".
+RULE :ApprovalRequirementRule
 IF {
   ?o a :PurchaseOrder ;
      :amount ?a .
@@ -24,11 +24,12 @@ THEN {
 }
 
 # Rule 2: derive approval violations.
-# A high-value order without a manager approver is an ApprovalViolation.
-# Note: ?m a :Manager itself can be inferred (range of :approvedBy), so rules
-# and OWL axioms compose.
+# An approved high-value order without an authorized approver is an ApprovalViolation.
+# Pending orders await a decision; rejected orders are not positive approvals.
+# Independent Manager membership comes from the is_manager=true source subset.
+# Negation requires reasoning.stride=true. This checks claimed positive approvals.
 IF {
-  ?o a :HighValueOrder .
+  ?o a :HighValueOrder ; :status "approved" .
   FILTER NOT EXISTS { ?o :approvedBy ?m . ?m a :Manager }
 }
 THEN {

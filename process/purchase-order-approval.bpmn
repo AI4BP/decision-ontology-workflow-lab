@@ -5,20 +5,20 @@
       <bpmn:outgoing>Flow_031zvjn</bpmn:outgoing>
     </bpmn:startEvent>
     <bpmn:sequenceFlow id="Flow_031zvjn" sourceRef="StartEvent_1" targetRef="Activity_1l23gtt" />
-    <bpmn:exclusiveGateway id="Gateway_1l7tfej" name="Amount &#62; 10,000?">
+    <bpmn:exclusiveGateway id="Gateway_1l7tfej" name="Manager approval required?">
       <bpmn:incoming>Flow_066lx7g</bpmn:incoming>
       <bpmn:outgoing>Flow_02g6ijs</bpmn:outgoing>
       <bpmn:outgoing>Flow_0cgdmv1</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:sequenceFlow id="Flow_066lx7g" sourceRef="Activity_1l23gtt" targetRef="Gateway_1l7tfej" />
     <bpmn:sequenceFlow id="Flow_02g6ijs" name="yes" sourceRef="Gateway_1l7tfej" targetRef="Activity_1vd404l">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${amount &gt; 10000}</bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${approvalRequired}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:endEvent id="Event_1bed2er" name="Order processed">
       <bpmn:incoming>Flow_1574e19</bpmn:incoming>
       <bpmn:incoming>Flow_1l3mwik</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:serviceTask id="Activity_1l23gtt" name="Validate order (SPARQL)" camunda:type="external" camunda:topic="validate-order">
+    <bpmn:serviceTask id="Activity_1l23gtt" name="Determine approval requirement" camunda:type="external" camunda:topic="validate-order">
       <bpmn:incoming>Flow_031zvjn</bpmn:incoming>
       <bpmn:outgoing>Flow_066lx7g</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -28,9 +28,9 @@
     </bpmn:userTask>
     <bpmn:sequenceFlow id="Flow_1574e19" sourceRef="Activity_1vd404l" targetRef="Event_1bed2er" />
     <bpmn:sequenceFlow id="Flow_0cgdmv1" name="no" sourceRef="Gateway_1l7tfej" targetRef="Activity_0m2b1mu">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${amount &lt;= 10000}</bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${!approvalRequired}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:serviceTask id="Activity_0m2b1mu" name="Auto-approve order" camunda:delegateExpression="{$true}">
+    <bpmn:serviceTask id="Activity_0m2b1mu" name="Auto-approve order" camunda:type="external" camunda:topic="auto-approve">
       <bpmn:incoming>Flow_0cgdmv1</bpmn:incoming>
       <bpmn:outgoing>Flow_1l3mwik</bpmn:outgoing>
     </bpmn:serviceTask>
