@@ -29,7 +29,7 @@ block-beta
 | 1 · Data & schema | [CSV sources](data/), [SQL schema](db/schema.sql) |
 | 2 · Semantic layer & mappings | [Designer project](ontology/Procurement.stardogdesigner), [analytical SQL view](db/analytical_views.sql) |
 | 3 · Ontology | [Procurement ontology](ontology/procurement-ontology.rdf) |
-| 4 · Query, rules & reasoning | [Business rules](ontology/procurement-rules.ttl), SPARQL in [the notebook](notebooks/validate_order_worker.ipynb) |
+| 4 · Query, rules & reasoning | [Business rules](ontology/procurement-rules.ttl), SPARQL in [the notebook](notebooks/procurement_ontology_lab.ipynb) |
 | 5 · Applications & workflow | [BPMN process](process/purchase-order-approval.bpmn), notebook worker |
 
 The mappings perform **semantic lifting**: they turn rows and foreign keys into identified business objects and relationships. The resulting **knowledge graph** connects these facts using the ontology; it is not an additional layer. The SQL view defines metrics, while the Designer mappings connect individual records to ontology concepts.
@@ -52,7 +52,7 @@ Find `PurchaseOrder`, `Employee`, `Manager`, `Supplier` and `Department`. Follow
 
 ### 2. Inspect CSV sources, build the SQL schema and inspect the semantic layer
 
-Open [the notebook](notebooks/validate_order_worker.ipynb) and run **section A (A1–A4)**. It displays the four CSVs, creates the SQL tables in memory, checks foreign keys and queries the analytical view. No Stardog connection is needed yet.
+Open [the notebook](notebooks/procurement_ontology_lab.ipynb) and run **section A (A1–A4)**. It displays the four CSVs, creates the SQL tables in memory, checks foreign keys and queries the analytical view. No Stardog connection is needed yet.
 
 Trace an order through its submitting employee to its department. Inspect the view's three metrics: all orders (`order_count`), pending orders (`pending_order_count`) and the sum of approved amounts (`approved_order_value`). Results are grouped by directly assigned department and currency, without currency conversion or hierarchy rollup.
 
@@ -64,17 +64,15 @@ Import [Procurement.stardogdesigner](ontology/Procurement.stardogdesigner) as a 
 
 Trace `purchase_orders.supplier_id` → `hasSupplier` → `Supplier`. The embedded `managers` resource contains only employees with `is_manager=true`; it shares their employee identifiers so each person remains one entity.
 
-Publish to database **`procurement`** using these data graphs; the notebook queries their union:
+Click **Publish** and complete the three screens:
 
-| Resource | Data graph |
-|---|---|
-| departments | `http://example.org/procurement/data/departments` |
-| employees | `http://example.org/procurement/data/employees` |
-| managers | `http://example.org/procurement/data/managers` |
-| purchase_orders | `http://example.org/procurement/data/purchase_orders` |
-| suppliers | `http://example.org/procurement/data/suppliers` |
+1. **Database Properties:** select database `procurement`; leave Voicebox disabled.
+2. **Configure Data Models:** choose **Create a new data model**, name it `Procurement` and keep the suggested model graph **`urn:Procurement_Lab:Procurement`** for the supplied project. Designer registers the model for reasoning.
+3. **Configure Mappings:** keep all five resources selected, choose **Create new**, keep the suggested graph settings and click **Publish**.
 
-In Studio, also load [procurement-ontology.rdf](ontology/procurement-ontology.rdf) into schema graph `tag:stardog:api:context:schema` and select it as the active reasoning schema. This preserves the complete OWL axioms beyond Designer's editable projection. Use a fresh lab database to avoid mixing earlier model versions.
+For data queries, keep **`stardog:context:all`** selected in Studio. The SELECT queries omit `FROM`; the notebook explicitly uses the same dataset, covering both default and named data graphs. The ontology and rule remain in the model graph for reasoning. For a later publication, use **Replace** for the existing model and mappings.
+
+In Studio, add [procurement-ontology.rdf](ontology/procurement-ontology.rdf) to **`urn:Procurement_Lab:Procurement`**, without replacing existing contents. This preserves the complete OWL axioms beyond Designer's editable projection. Load the rule into this same model graph in step 5. If publishing again replaces the model graph, reload the RDF file and rule afterwards.
 
 **Check:** missing foreign keys create no relationship. If you change a CSV later, update its embedded Designer resource as well, including the filtered Manager subset.
 
@@ -88,15 +86,24 @@ Open `procurement` in Explorer and select the published model and data graphs. F
 
 ### 5. Extend rules and test SPARQL in Stardog Studio
 
-Load **only `ApprovalRequirementRule`**, the first rule in [procurement-rules.ttl](ontology/procurement-rules.ttl), into `tag:stardog:api:context:schema`. It classifies orders above 10,000 as `HighValueOrder`. This simplified policy applies the threshold separately in each currency.
+[procurement-rules.ttl](ontology/procurement-rules.ttl) is the single source for the approval policy. It contains one named rule, `ApprovalRequirementRule`, which classifies orders above 10,000 as `HighValueOrder`. The simplified policy applies the threshold separately in each currency.
+
+In Studio:
+
+1. Open **Databases → procurement → Load Data**.
+2. Select `ontology/procurement-rules.ttl`, use format **Turtle**, and set the target named graph to **`urn:Procurement_Lab:Procurement`**. Add the file to this graph without replacing the ontology.
+3. Use the model graph already registered by Designer; no database-property changes are required. Stardog accepts the file's `RULE … IF … THEN` syntax as an extension of Turtle; it is not a SPARQL query to execute in a query tab. See [Stardog's rule syntax](https://docs.stardog.com/inference-engine/user-defined-rules).
+
+The rule is stored in Stardog and its results are inferred when querying with reasoning enabled. No Stride configuration is required.
+
+**Readable prefixes:** use `proc:` for ontology terms. For compact results in Studio, open **Databases → procurement → Namespaces**, keep or add `proc` → `http://example.org/procurement#` and add `po` → `http://example.org/procurement#purchase_orders/`, then save. Studio can display an order as `po:1002`. Prefixes abbreviate existing IRIs; they do not change identifiers or graph locations. The queries retain explicit `PREFIX` declarations so they also work in Python. Python's JSON results still contain full IRIs. See [Stardog namespaces](https://docs.stardog.com/operating-stardog/database-administration/managing-databases#namespaces).
 
 Run this query with reasoning **off**, then **on**:
 
 ```sparql
-PREFIX : <http://example.org/procurement#>
+PREFIX proc: <http://example.org/procurement#>
 SELECT ?order
-FROM <http://example.org/procurement/data/purchase_orders>
-WHERE { ?order a :HighValueOrder }
+WHERE { ?order a proc:HighValueOrder }
 ORDER BY ?order
 ```
 
@@ -105,45 +112,78 @@ ORDER BY ?order
 For an ontology inference, query the department hierarchy:
 
 ```sparql
-PREFIX : <http://example.org/procurement#>
+PREFIX proc: <http://example.org/procurement#>
 SELECT ?department
-FROM <http://example.org/procurement/data/departments>
-WHERE { ?department :partOf <http://example.org/procurement#departments/4> }
+WHERE { ?department proc:partOf <http://example.org/procurement#departments/4> }
 ORDER BY ?department
 ```
 
 **Check:** departments 1, 2 and 3 without reasoning; additionally department 5 with reasoning, through transitive `partOf`.
 
-**Experiment:** lower the threshold to 4,000 and predict which orders now qualify. Replace the existing named rule rather than adding a second version. Remove its stored statements with this update, then load the revised rule:
+**Change the rule with SPARQL Update:** in **Studio → Workspace**, select database `procurement` and graph **`urn:Procurement_Lab:Procurement`** in the top dropdown, turn reasoning off, and execute the following update. It replaces the stored rule content with a threshold of 4,000, preserving the rule's identity and the ontology. The `.ttl` file remains the baseline for the initial import. `USING` explicitly selects the model graph for matching the old rule content, independently of the default dataset used for SELECT queries.
 
 ```sparql
-PREFIX : <http://example.org/procurement#>
-DELETE WHERE {
-  GRAPH <tag:stardog:api:context:schema> {
-    :ApprovalRequirementRule ?predicate ?value .
+PREFIX proc: <http://example.org/procurement#>
+PREFIX rule: <tag:stardog:api:rule:>
+
+DELETE {
+  GRAPH <urn:Procurement_Lab:Procurement> {
+    proc:ApprovalRequirementRule rule:content ?oldContent .
   }
+}
+INSERT {
+  GRAPH <urn:Procurement_Lab:Procurement> {
+    proc:ApprovalRequirementRule rule:content """
+      PREFIX proc: <http://example.org/procurement#>
+      IF {
+        ?order a proc:PurchaseOrder ; proc:amount ?amount .
+        FILTER(?amount > 4000)
+      }
+      THEN { ?order a proc:HighValueOrder . }
+    """ .
+  }
+}
+USING <urn:Procurement_Lab:Procurement>
+WHERE {
+  proc:ApprovalRequirementRule rule:content ?oldContent .
 }
 ```
 
-Restore **10,000** before step 6. The second rule, `ApprovalViolation`, is an optional exercise requiring `reasoning.stride=true`; it is not needed for this workflow.
+**Verify the stored rule:** keep the model graph selected and reasoning off, then run:
+
+```sparql
+PREFIX proc: <http://example.org/procurement#>
+PREFIX rule: <tag:stardog:api:rule:>
+SELECT ?content
+WHERE { proc:ApprovalRequirementRule rule:content ?content . }
+```
+
+Expect exactly **one** rule text with threshold **4000**. Then switch the graph dropdown back to **`stardog:context:all`** for order queries. Re-run the classification query with reasoning enabled: orders **1003 and 1005** now qualify in addition to 1002, 1004 and 1006. To restore the baseline, change `4000` to `10000` in this update and execute it again before step 6. No file editing or re-upload is needed. Run updates with your Studio account; the read-only notebook user only queries the resulting policy.
 
 ### 6. Run the external service tasks and BPMN workflow
 
-Return to **section B** of [the notebook](notebooks/validate_order_worker.ipynb):
+Before connecting Python, create a database user in **Studio → Security** using an account allowed to manage users:
+
+1. Under **Users**, click **Add User**, choose a username such as `procurement_worker`, set a password, and save.
+2. Select the user and choose **Add Explicit Permission**: action **READ**, resource type **db**, resource name **procurement**. This grants query access, including reasoning; the notebook does not need write or administrator permissions.
+3. Use this database username and password in B2, together with the Stardog endpoint used by your Studio connection. Your cloud portal login is a separate account. See [Stardog user management](https://docs.stardog.com/operating-stardog/security/managing-users-and-roles).
+
+Return to **section B** of [the notebook](notebooks/procurement_ontology_lab.ipynb). Python is a provided adapter, not a programming exercise. Students understand the SPARQL query and observe the workflow; they run the Python cells unchanged:
 
 1. Run **B1–B2** and enter the Stardog endpoint, database username and password. Use the database endpoint rather than the cloud portal URL.
-2. Read the standard SPARQL query and `check_order` in **B3–B4**. The query retrieves inferred membership; Python passes the result to the process without evaluating the threshold.
-3. Run **B5** with the baseline rule: order 1003 returns `false`, order 1006 returns `true`. Resolve any failed check before starting the worker.
-4. Run **B6** to define the callbacks. Deploy [purchase-order-approval.bpmn](process/purchase-order-approval.bpmn), then run **B7**, enter your tenant ID and start a process instance with an integer `orderId`. The REST URL is already set to `https://digibp.engines.aisl.science/engine-rest`.
+2. **B3–B4:** read the SPARQL query and run the prepared query adapter unchanged.
+3. **B5:** test `check_order(1006)` and inspect the simple result table. Expect `approvalRequired=True`.
+4. **B6:** run the prepared workflow adapter unchanged. It supplies each process instance’s `orderId` to the same function.
+5. Deploy [purchase-order-approval.bpmn](process/purchase-order-approval.bpmn), then run **B7**, enter your tenant ID and start a process instance with an integer `orderId`. The REST URL is already set to `https://digibp.engines.aisl.science/engine-rest`.
 
 | Order | `approvalRequired` | Expected path |
 |---|---|---|
 | 1003 · 4,200 EUR | `false` | Automatic approval |
 | 1006 · 15,250 CHF | `true` | Manager approval |
 
-The external task `validate-order` supplies `approvalRequired`; the gateway routes on that Boolean. The `auto-approve` worker handles the automatic path.
+The external task `validate-order` supplies `approvalRequired`; the gateway routes on that Boolean. The `auto-approve` worker handles the automatic path. The provided adapter queries Stardog with reasoning enabled and uses the rule stored in step 5; no separate rule upload or worker restart is needed. A stored rule change affects subsequent queries; it does not revise completed workflow decisions. Use a new process instance to observe the changed route.
 
-**Experiment (B8):** replace the rule with a threshold of 4,000 and start a new instance for order 1003. It now takes the manager path, using the same query, Python code and BPMN model. Restore the original rule afterwards. Interrupt notebook polling to stop the worker.
+**Experiment (B8):** keep the B7 worker polling. Execute the SPARQL Update from step 5 with threshold 4,000. After updating the rule, start a new instance for order 1003. It now takes the manager path, using the same query, Python code and BPMN model. Restore the original rule afterwards. Interrupt notebook polling to stop the worker.
 
 ![Purchase order approval process](process/purchase-order-approval.png)
 

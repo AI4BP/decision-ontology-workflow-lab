@@ -2,6 +2,11 @@
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1j46yf9" targetNamespace="http://bpmn.io/schema/bpmn">
   <bpmn:process id="PurchaseOrderApproval" name="Purchase Order Approval" isExecutable="true">
     <bpmn:startEvent id="StartEvent_1" name="Order submitted">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="orderId" label="Order ID:" type="long" defaultValue="1006" />
+        </camunda:formData>
+      </bpmn:extensionElements>
       <bpmn:outgoing>Flow_031zvjn</bpmn:outgoing>
     </bpmn:startEvent>
     <bpmn:sequenceFlow id="Flow_031zvjn" sourceRef="StartEvent_1" targetRef="Activity_1l23gtt" />
@@ -23,6 +28,12 @@
       <bpmn:outgoing>Flow_066lx7g</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:userTask id="Activity_1vd404l" name="Manager approval">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="orderId" label="Order Id:" type="long" />
+          <camunda:formField id="orderStatus" label="Order Status" type="boolean" />
+        </camunda:formData>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_02g6ijs</bpmn:incoming>
       <bpmn:outgoing>Flow_1574e19</bpmn:outgoing>
     </bpmn:userTask>
@@ -50,6 +61,12 @@
           <dc:Bounds x="396" y="65" width="48" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1bed2er_di" bpmnElement="Event_1bed2er">
+        <dc:Bounds x="682" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="659" y="78" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_16zl2p0_di" bpmnElement="Activity_1l23gtt">
         <dc:Bounds x="240" y="80" width="100" height="80" />
         <bpmndi:BPMNLabel />
@@ -59,12 +76,6 @@
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Activity_13j6ham_di" bpmnElement="Activity_0m2b1mu">
         <dc:Bounds x="500" y="190" width="100" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Event_1bed2er_di" bpmnElement="Event_1bed2er">
-        <dc:Bounds x="682" y="102" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="659" y="78" width="82" height="14" />
-        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_031zvjn_di" bpmnElement="Flow_031zvjn">
         <di:waypoint x="188" y="120" />
