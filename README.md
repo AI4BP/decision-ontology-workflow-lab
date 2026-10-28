@@ -1,24 +1,16 @@
 # decision-ontology-workflow-lab
 
-A minimal but complete, consistent teaching package for ontology-grounded
-decision workflows: one business rule, expressed in a BPMN process, an OWL
-ontology, and a small relational dataset.
+A minimal but complete, consistent teaching package for ontology-grounded decision workflows: one business rule, expressed in a BPMN process, an OWL ontology, and a small relational dataset.
 
-Technology scope: Ontology Playground, Stardog (Cloud Free: Studio, Designer, Explorer), Python
-(pystardog, martinlab-utils), BPMN (Camunda BPM 7 / CIB seven), CSV and plain
-SQL.
+Technology scope: Ontology Playground, Stardog (Cloud Free: Studio, Designer, Explorer), Python (pystardog, martinlab-utils), BPMN (Camunda BPM 7 / CIB seven), CSV and plain SQL.
 
-**Business rule:** Orders with an `amount` above 10,000 require approval by a
-*Manager*; orders at or below 10,000 are auto-approved.
+**Business rule:** Orders with an `amount` above 10,000 require approval by a *Manager*; orders at or below 10,000 are auto-approved.
 
 ![Purchase order approval process (BPMN)](process/purchase-order-approval.png)
 
 ## Conceptual architecture: from data to decisions
 
-The six layers below separate responsibilities in this lab. They are a
-**teaching model**, synthesized from the sources below, rather than a
-standardized architecture or a mandatory processing pipeline. Layers can
-share an implementation; the analytical semantic layer is optional.
+The six layers below separate responsibilities in this lab. They are a **teaching model**, synthesized from the sources below, rather than a standardized architecture or a mandatory processing pipeline. Layers can share an implementation; the analytical semantic layer is optional.
 
 ```mermaid
 block-beta
@@ -38,11 +30,7 @@ block-beta
     style L1 fill:#f1f5f9,stroke:#64748b,color:#0f172a
 ```
 
-The stacked blocks group responsibilities; their vertical position does not
-prescribe execution order or require every application to pass through every
-layer. Ontologies and analytical models can be developed independently and
-connected through mappings. Applications can consume records, graph queries
-or analytical measures according to their needs.
+The stacked blocks group responsibilities; their vertical position does not prescribe execution order or require every application to pass through every layer. Ontologies and analytical models can be developed independently and connected through mappings. Applications can consume records, graph queries or analytical measures according to their needs.
 
 ### Connection to the purchase order use case
 
@@ -57,41 +45,15 @@ or analytical measures according to their needs.
 
 ### Optional paths and semantic boundaries
 
-- **Direct ontology path:** ontology → mappings/bindings → data. An
-  analytical semantic model is not required. Mapped graph data can be
-  materialized or accessed virtually; the choice is an implementation detail.
-- **Analytical path:** a domain ontology and an analytical semantic model
-  can reuse compatible concepts and mappings. The latter adds metric and
-  aggregation definitions; it is not a prerequisite for the ontology.
-  Generating one model from another requires tool support and semantic review.
-- **Meaning versus execution:** ontology axioms define logical meaning;
-  inference requires an appropriate reasoner. Retrieval, validation checks,
-  deductive inference and event-triggered actions are distinct mechanisms,
-  even though they are grouped in layer 5
-  ([OWL 2 Primer](https://www.w3.org/TR/owl2-primer/),
-  [SPARQL entailment regimes](https://www.w3.org/TR/sparql11-entailment/)).
-  In this lab, the missing-approver query checks the available data. Under
-  an open-world interpretation, missing information alone does not establish
-  a logical violation.
+- **Direct ontology path:** ontology → mappings/bindings → data. An analytical semantic model is not required. Mapped graph data can be materialized or accessed virtually; the choice is an implementation detail.
+- **Analytical path:** a domain ontology and an analytical semantic model can reuse compatible concepts and mappings. The latter adds metric and aggregation definitions; it is not a prerequisite for the ontology. Generating one model from another requires tool support and semantic review.
+- **Meaning versus execution:** ontology axioms define logical meaning; inference requires an appropriate reasoner. Retrieval, validation checks, deductive inference and event-triggered actions are distinct mechanisms, even though they are grouped in layer 5 ([OWL 2 Primer](https://www.w3.org/TR/owl2-primer/), [SPARQL entailment regimes](https://www.w3.org/TR/sparql11-entailment/)). In this lab, the missing-approver query checks the available data. Under an open-world interpretation, missing information alone does not establish a logical violation.
 
 ### Where does the knowledge graph fit?
 
-The **knowledge graph** is the connected representation of entities,
-relationships and facts used across these responsibilities. Here, instance facts are organized
-using the procurement ontology; queries may also expose inferred facts.
-A knowledge graph can use RDF or a labeled property graph. An explicit OWL
-ontology is not required by every definition or implementation of a
-knowledge graph; RDF/OWL entailment does not transfer automatically to a
-property graph. This distinction follows the broad treatment in
-[Hogan et al., *Knowledge Graphs*, ACM Computing Surveys (2021)](https://doi.org/10.1145/3447772).
+The **knowledge graph** is the connected representation of entities, relationships and facts used across these responsibilities. Here, instance facts are organized using the procurement ontology; queries may also expose inferred facts. A knowledge graph can use RDF or a labeled property graph. An explicit OWL ontology is not required by every definition or implementation of a knowledge graph; RDF/OWL entailment does not transfer automatically to a property graph. This distinction follows the broad treatment in [Hogan et al., *Knowledge Graphs*, ACM Computing Surveys (2021)](https://doi.org/10.1145/3447772).
 
-**Example — order 1006:** the CSV provides an amount of 15,250 CHF and no
-approver (1); mappings identify the order and its properties (2); the
-ontology defines `PurchaseOrder` and `approvedBy` (4); the SPARQL check reports the missing manager approval in the available data
-(5); the BPMN gateway routes high-value orders to the manager task (6). Layer 3 is
-unnecessary for this check. For analytical spend totals across the sample's
-CHF, EUR and USD orders, group by currency or define currency conversion
-explicitly before aggregation.
+**Example — order 1006:** the CSV provides an amount of 15,250 CHF and no approver (1); mappings identify the order and its properties (2); the ontology defines `PurchaseOrder` and `approvedBy` (4); the SPARQL check reports the missing manager approval in the available data (5); the BPMN gateway routes high-value orders to the manager task (6). Layer 3 is unnecessary for this check. For analytical spend totals across the sample's CHF, EUR and USD orders, group by currency or define currency conversion explicitly before aggregation.
 
 ## Repository structure
 
@@ -128,10 +90,7 @@ decision-ontology-workflow-lab/
 | `db/schema.sql` | Matching relational schema incl. `CREATE DATABASE` (server-side; skip that section for the SQLite/sql.js import). Table names = CSV file stems = `map:sourceTable` values. |
 | `notebooks/validate_order_worker.ipynb` | Runnable external-task worker for variant 1c (Deepnote-ready, env-var based). |
 
-Naming conventions: table `purchase_orders` ↔ class `PurchaseOrder`; column
-`amount` ↔ property `amount`; PK column `id` ↔ `{Class}Id`; column `name` ↔
-`{Class}Name`; `Manager` instances come from `employees` with row filter
-`is_manager=true` (or are inferred — see 1d).
+Naming conventions: table `purchase_orders` ↔ class `PurchaseOrder`; column `amount` ↔ property `amount`; PK column `id` ↔ `{Class}Id`; column `name` ↔ `{Class}Name`; `Manager` instances come from `employees` with row filter `is_manager=true` (or are inferred — see 1d).
 
 ---
 
@@ -139,33 +98,23 @@ Naming conventions: table `purchase_orders` ↔ class `PurchaseOrder`; column
 
 ### Extend the BPMN model
 
-The process model already contains the two extension points — no code here,
-pure modeling (Camunda BPM 7 / CIB seven external-task pattern):
+The process model already contains the two extension points — no code here, pure modeling (Camunda BPM 7 / CIB seven external-task pattern):
 
-- `Validate order (SPARQL)`: **external service task** with topic
-  `validate-order`. The process engine only sees a topic; the implementation
-  is provided later by the Python worker (variant 1c).
+- `Validate order (SPARQL)`: **external service task** with topic `validate-order`. The process engine only sees a topic; the implementation is provided later by the Python worker (variant 1c).
 - `Manager approval`: **user task** for the human decision.
 
-Open `process/purchase-order-approval.bpmn` in Camunda Modeler or bpmn.io and
-inspect the gateway conditions `${amount > 10000}` / `${amount <= 10000}` —
-the same rule reappears as SPARQL (1c) and as a Stardog inference rule (1d).
+Open `process/purchase-order-approval.bpmn` in Camunda Modeler or bpmn.io and inspect the gateway conditions `${amount > 10000}` / `${amount <= 10000}` — the same rule reappears as SPARQL (1c) and as a Stardog inference rule (1d).
 
 ### Import and explore the ontology in the Ontology Playground
 
-Fastest start — no import needed: [open the ontology directly in the
-Playground](https://microsoft.github.io/Ontology-Playground/#/share/eJytWF2OG7kRvkqh8yIBLUWbtXezGiTB_FjwYHc9jsdOHjKGUeouqbnDJtskW3LD2DNkFzlAgCDI214qJ8gRkmL_kC3NeHZjv0lsssiv6quqj3yfaOW01NsmWb5PFJaULJPnRme1oZKUg6v-c5rkZDMjKie0SpbJS8KsEGoLvQHYaAOuIHhem6xAS3BlcjJwWlVG71DCXpvbjdT7OZzVViiyFkwtaQma51nYC1cAKsBS18oBrvWO4LNFulgswNDbWhiCEhVuyQD2RieWCLboaI8N3CSn7drfd-v-cJOAUFB1J5r5nWb94vm6KtV0Di8Lght2xPImAVRKO2SQFibCXuaknNgIMilkaHKhUArXpCAyrVLItNRmChstpd579L3D4LnEZmt0rXL4NaxwbUQGl3-EFxcryLTasVmt7IlfdJOUWI13h8roiowTZHlj0_iJOTpcs2_XQuXs_YnDtSR_kLpUKRi9h42QjvypDGDtdIlOZFBiVfGKLSkyfos5vCC0Wgm1nRmStEN2-zuhSwsTW68zidam4AwqK5zYCddMAQ2BUGQcO3Yj0YHTWtplG_qAGVUeoRZlpY3zc0h6Zlk_Q2yVNuTH241P4NqhyfUWakuWP5RtjKtAyhnTxs6dkwPneAQkNmSm8yRN2LmuedlUZJPlX94nIk-WSc8CT8skHdh-MDym-elAnpamYOt1KZyjHNYNs5XKSuqGCJwGBFtXlRRk5i357c9j8QnYEqUk06cCO5kj11GVcgbFjPsfjP_8_W__StLEMy9ZJr96dP7V6WqVpEkgjMfcwfMWL_MkTVxT8YBQjrYeaczuZOlMTYfoXynxtiYQwzTQG8BDl0wqI0o0DdxSwxP6z29aNNN58n06nKfN7nCcnDJRojyuL9qh7DboKoJQPtZZbQyprIGt2JHiMIxGOzc0c7gwYtdyKNQL3s5yek1cYcgWWuZddKaekDy5Z6AnlSuQd95wWJ6KbfEnlHXLFSipXJOxhahGCPuTBIzWGaG2RxAvr6_g0W8--zKcPdM5sQf5FDH0FGi-ncP501UKT169SOHV9cVoz7c1esrfFebxps9qPjRvUivhbLsNEyyy5scu0FEUpvbf2BZPic66RxvSY2TQOnS1fdAh34gNZU0mCdoFI1csoSJf81LoswK0AUPfUdbu95p39KneJ2XI8idh5CjByVg9JHI-EEqXFaoG9oWGDFWH7ID7dpSYP_4zTszPvzj7_Msn9yZmf8ZPm5tRQTpMy_7DQUL2w8_470MRWtVSAi_sQ9OvPjCJQj5o68_a3IKfCpjnhvXAh4wWwtAv4eTgh--0UJTHMT0BUtw2LVhSQhvhGnhbkxFkRzTq6nRg0bfDwAGJIre3MqavN1i7wm8wh-uuozLKno5LEMo6VBm1RX-IUWtG2Dd9r_gdeBKA1WB81-aC5OtS2ySdhnW8Hi3sSco5XKpRUduhEcgVpcMSVTFPc5TWW5K0cVArVg3UdnO_maEcNkaXbddFtfVM6BPyrIny4d8__RCnw2Jx9tuLr-5Nhw7nJ-5UndUTsMzZHddusBVmxP4JGZiCFSobGvNhLCbDz7nIYV8Qa6DD0ExH1OmFQODOdRg5rEB9qfG9JicpdnyGrdY512ewZHYiI9sqVdZuLPwWs8fTgcdG2Nuewl2zKMS2mLWIO1Xh4yb1fmaQ9Ut_xHEN--tPcdBWq9OzxeLeoPUmPnHUerNHJWw48riE9cM_q4Q9i6rXsFEXgXEf585rHm7j5-28jhcjs8ICq_VxM2wD-LAC6gnTR9yHbzFfwKTSfOlwGh7zP3qXkZSk3PSERXPuRbEnBCqUjRW-4hzRYUTXnCo0jsV1IOxFPHZU77TZohLWXyRQejERbnBK1ShjyQ7rOt-Sm0MwavmcJSAUggyarGhgJxD489UGJsOtg6Zjfv4j5ucXjx8_Or-fnwHWJ2ZoMHzE0fDpgKXhwy_maVg6stg69WEmnd4Xj2P7LLLPn65OOCPWvm_6oPKkEJE-SCFywg2lqLNstJR1NWqrr9PEkGzv1oWooqvZoBrPmsC_8SCz_45LnNNjuRfd0dum0sycnml1LBS-EeqWL6GdeHV6rBpY9oW7nnAwWX19eLOZDxPesGjUEPeJLvgeX-iPAd5o7EPoggr5WHB9w2Jsd2loEG7OuiBHp037oKPvuMbe5Yne3B2OSENb1Uo20-jZAXIq9TLSEr0okeTsIFlaldMZKbTOI8nRvRvp2gG9q6TIhAPX8ENH5P4C7fVRPx4PfigAUS__mAjwbSt0tjvZ1H58I3KeH_rzmEz8jmYvVUASBjoUUT54AKPq_n9AiN84XEHCjOrf6uso3OFDhyIqhwc42iISYAz_OxSjU38MjqtxqwpVa01uT6TiM3o48ZkrNPeDgQvKJLImDsVxOeYti_RcGMpcrLQxM9pakLQjaU-ih7L-DeKuZ8ToES2uo4cPafF7Xfuq1rb6pHsz5Lr7-vv_AlxRwCY)
-(the ontology state is encoded in the URL fragment — no backend involved).
+Fastest start — no import needed: [open the ontology directly in the Playground](https://microsoft.github.io/Ontology-Playground/#/share/eJytWF2OG7kRvkqh8yIBLUWbtXezGiTB_FjwYHc9jsdOHjKGUeouqbnDJtskW3LD2DNkFzlAgCDI214qJ8gRkmL_kC3NeHZjv0lsssiv6quqj3yfaOW01NsmWb5PFJaULJPnRme1oZKUg6v-c5rkZDMjKie0SpbJS8KsEGoLvQHYaAOuIHhem6xAS3BlcjJwWlVG71DCXpvbjdT7OZzVViiyFkwtaQma51nYC1cAKsBS18oBrvWO4LNFulgswNDbWhiCEhVuyQD2RieWCLboaI8N3CSn7drfd-v-cJOAUFB1J5r5nWb94vm6KtV0Di8Lght2xPImAVRKO2SQFibCXuaknNgIMilkaHKhUArXpCAyrVLItNRmChstpd579L3D4LnEZmt0rXL4NaxwbUQGl3-EFxcryLTasVmt7IlfdJOUWI13h8roiowTZHlj0_iJOTpcs2_XQuXs_YnDtSR_kLpUKRi9h42QjvypDGDtdIlOZFBiVfGKLSkyfos5vCC0Wgm1nRmStEN2-zuhSwsTW68zidam4AwqK5zYCddMAQ2BUGQcO3Yj0YHTWtplG_qAGVUeoRZlpY3zc0h6Zlk_Q2yVNuTH241P4NqhyfUWakuWP5RtjKtAyhnTxs6dkwPneAQkNmSm8yRN2LmuedlUZJPlX94nIk-WSc8CT8skHdh-MDym-elAnpamYOt1KZyjHNYNs5XKSuqGCJwGBFtXlRRk5i357c9j8QnYEqUk06cCO5kj11GVcgbFjPsfjP_8_W__StLEMy9ZJr96dP7V6WqVpEkgjMfcwfMWL_MkTVxT8YBQjrYeaczuZOlMTYfoXynxtiYQwzTQG8BDl0wqI0o0DdxSwxP6z29aNNN58n06nKfN7nCcnDJRojyuL9qh7DboKoJQPtZZbQyprIGt2JHiMIxGOzc0c7gwYtdyKNQL3s5yek1cYcgWWuZddKaekDy5Z6AnlSuQd95wWJ6KbfEnlHXLFSipXJOxhahGCPuTBIzWGaG2RxAvr6_g0W8--zKcPdM5sQf5FDH0FGi-ncP501UKT169SOHV9cVoz7c1esrfFebxps9qPjRvUivhbLsNEyyy5scu0FEUpvbf2BZPic66RxvSY2TQOnS1fdAh34gNZU0mCdoFI1csoSJf81LoswK0AUPfUdbu95p39KneJ2XI8idh5CjByVg9JHI-EEqXFaoG9oWGDFWH7ID7dpSYP_4zTszPvzj7_Msn9yZmf8ZPm5tRQTpMy_7DQUL2w8_470MRWtVSAi_sQ9OvPjCJQj5o68_a3IKfCpjnhvXAh4wWwtAv4eTgh--0UJTHMT0BUtw2LVhSQhvhGnhbkxFkRzTq6nRg0bfDwAGJIre3MqavN1i7wm8wh-uuozLKno5LEMo6VBm1RX-IUWtG2Dd9r_gdeBKA1WB81-aC5OtS2ySdhnW8Hi3sSco5XKpRUduhEcgVpcMSVTFPc5TWW5K0cVArVg3UdnO_maEcNkaXbddFtfVM6BPyrIny4d8__RCnw2Jx9tuLr-5Nhw7nJ-5UndUTsMzZHddusBVmxP4JGZiCFSobGvNhLCbDz7nIYV8Qa6DD0ExH1OmFQODOdRg5rEB9qfG9JicpdnyGrdY512ewZHYiI9sqVdZuLPwWs8fTgcdG2Nuewl2zKMS2mLWIO1Xh4yb1fmaQ9Ut_xHEN--tPcdBWq9OzxeLeoPUmPnHUerNHJWw48riE9cM_q4Q9i6rXsFEXgXEf585rHm7j5-28jhcjs8ICq_VxM2wD-LAC6gnTR9yHbzFfwKTSfOlwGh7zP3qXkZSk3PSERXPuRbEnBCqUjRW-4hzRYUTXnCo0jsV1IOxFPHZU77TZohLWXyRQejERbnBK1ShjyQ7rOt-Sm0MwavmcJSAUggyarGhgJxD489UGJsOtg6Zjfv4j5ucXjx8_Or-fnwHWJ2ZoMHzE0fDpgKXhwy_maVg6stg69WEmnd4Xj2P7LLLPn65OOCPWvm_6oPKkEJE-SCFywg2lqLNstJR1NWqrr9PEkGzv1oWooqvZoBrPmsC_8SCz_45LnNNjuRfd0dum0sycnml1LBS-EeqWL6GdeHV6rBpY9oW7nnAwWX19eLOZDxPesGjUEPeJLvgeX-iPAd5o7EPoggr5WHB9w2Jsd2loEG7OuiBHp037oKPvuMbe5Yne3B2OSENb1Uo20-jZAXIq9TLSEr0okeTsIFlaldMZKbTOI8nRvRvp2gG9q6TIhAPX8ENH5P4C7fVRPx4PfigAUS__mAjwbSt0tjvZ1H58I3KeH_rzmEz8jmYvVUASBjoUUT54AKPq_n9AiN84XEHCjOrf6uso3OFDhyIqhwc42iISYAz_OxSjU38MjqtxqwpVa01uT6TiM3o48ZkrNPeDgQvKJLImDsVxOeYti_RcGMpcrLQxM9pakLQjaU-ih7L-DeKuZ8ToES2uo4cPafF7Xfuq1rb6pHsz5Lr7-vv_AlxRwCY) (the ontology state is encoded in the URL fragment — no backend involved).
 
 Manual import and exploration:
 
 1. Open the [Ontology Playground](https://microsoft.github.io/Ontology-Playground/).
 2. Import/Export → import `ontology/procurement-ontology.rdf`.
-3. Explore: identifiers render with the 🔑 icon, relationships show
-   cardinalities (note the self-relationship `partOf` on Department), classes
-   show their icons/colors. Validation should report no issues.
-4. Optional: re-export as RDF/XML. The transitivity axiom and the subclass
-   axiom are ignored by the Playground's flat model — by design.
+3. Explore: identifiers render with the 🔑 icon, relationships show cardinalities (note the self-relationship `partOf` on Department), classes show their icons/colors. Validation should report no issues.
+4. Optional: re-export as RDF/XML. The transitivity axiom and the subclass axiom are ignored by the Playground's flat model — by design.
 
 ![Procurement ontology in the Ontology Playground](ontology/procurement-ontology-graph.png)
 
@@ -177,41 +126,21 @@ All steps run in Stardog Cloud (free tier suffices: 1M edges, 3 databases).
 
 ### 1a. Ontology import (Designer)
 
-1. In **Studio**: create a database `procurement`, then load
-   `ontology/procurement-ontology.rdf` via the Database Hub (Load Data). Load
-   it into the schema graph `tag:stardog:api:context:schema` so Designer can
-   see it; the RDF/XML format is detected automatically.
-2. In **Designer**: click the plus icon next to *Data Models* and import the
-   model from the endpoint (server → `procurement` → schema). Alternatively,
-   upload the model as a `.ttl` file directly in Designer.
-3. If you build the model by hand instead, set the model namespace to
-   `http://example.org/procurement#` (Designer's default is
-   `tag:stardog:designer:<project>:model:`).
+1. In **Studio**: create a database `procurement`, then load `ontology/procurement-ontology.rdf` via the Database Hub (Load Data). Load it into the schema graph `tag:stardog:api:context:schema` so Designer can see it; the RDF/XML format is detected automatically.
+2. In **Designer**: click the plus icon next to *Data Models* and import the model from the endpoint (server → `procurement` → schema). Alternatively, upload the model as a `.ttl` file directly in Designer.
+3. If you build the model by hand instead, set the model namespace to `http://example.org/procurement#` (Designer's default is `tag:stardog:designer:<project>:model:`).
 
 ### 1b. CSV → graph mapping (Stardog Cloud, no code)
 
 1. In Designer, add the four CSVs from `data/` as data sources (upload).
-2. Map each CSV to its class: select the identifier column (`id`), the label
-   and the attributes (`amount`, `currency`, `rating`, …); map the FK columns
-   (`submitted_by`, `supplier_id`, `approved_by`, `department_id`,
-   `parent_id`) as relationships. Designer suggests mappings in preview mode.
-3. **Reasoning setup choice:** map `employees.csv` only to `Employee` and do
-   *not* map a `Manager` subset — in 1d, Stardog will infer managerhood from
-   the range of `approvedBy`. (Mapping the subclass explicitly via the
-   `is_manager=true` filter is the alternative; compare both in class.)
-4. **Publish** the project to the `procurement` database — publishing
-   materializes the mapped data as RDF.
-5. Verify in Studio or Explorer with query 1 from the gallery below
-   (expected: orders 1002, 1004, 1006 on the manager path).
+2. Map each CSV to its class: select the identifier column (`id`), the label and the attributes (`amount`, `currency`, `rating`, …); map the FK columns (`submitted_by`, `supplier_id`, `approved_by`, `department_id`, `parent_id`) as relationships. Designer suggests mappings in preview mode.
+3. **Reasoning setup choice:** map `employees.csv` only to `Employee` and do *not* map a `Manager` subset — in 1d, Stardog will infer managerhood from the range of `approvedBy`. (Mapping the subclass explicitly via the `is_manager=true` filter is the alternative; compare both in class.)
+4. **Publish** the project to the `procurement` database — publishing materializes the mapped data as RDF.
+5. Verify in Studio or Explorer with query 1 from the gallery below (expected: orders 1002, 1004, 1006 on the manager path).
 
 ### 1c. External task worker with SPARQL (Deepnote notebook)
 
-The implementation behind the BPMN topic `validate-order`, using
-`martinlab-utils` for the Camunda BPM 7 / CIB seven external-task client and
-`pystardog` for the rule check. Runnable version:
-`notebooks/validate_order_worker.ipynb`. Credentials live in Deepnote
-environment variables (Project settings → Environment variables; see
-`.env.example` for the variable names).
+The implementation behind the BPMN topic `validate-order`, using `martinlab-utils` for the Camunda BPM 7 / CIB seven external-task client and `pystardog` for the rule check. Runnable version: `notebooks/validate_order_worker.ipynb`. Credentials live in Deepnote environment variables (Project settings → Environment variables; see `.env.example` for the variable names).
 
 ```python
 # pip install martinlab-utils pystardog
@@ -251,38 +180,21 @@ worker.subscribe("validate-order", validate_order, TENANT_ID)
 worker.polling()
 ```
 
-Expected behaviour with the sample data: order **1006** → `valid: False`
-(pending, 15,250 CHF, no manager assigned); order **1001** → `valid: True`
-(below threshold); order **1002** → `valid: True` (approved by a manager).
-With reasoning enabled (1d), the `?m a :Manager` check works even though no
-manager is explicitly typed in the mapped data.
+Expected behaviour with the sample data: order **1006** → `valid: False` (pending, 15,250 CHF, no manager assigned); order **1001** → `valid: True` (below threshold); order **1002** → `valid: True` (approved by a manager). With reasoning enabled (1d), the `?m a :Manager` check works even though no manager is explicitly typed in the mapped data.
 
-`valid` is a diagnostic approval check: a pending high-value order can
-return false before the Manager approval task. The existing BPMN does not
-use it as a release gate. The example does not provide persistence of human
-decisions back to Stardog or CSV.
+`valid` is a diagnostic approval check: a pending high-value order can return false before the Manager approval task. The existing BPMN does not use it as a release gate. The example does not provide persistence of human decisions back to Stardog or CSV.
 
-The code example and notebook retain their original implementation. They
-require verification against the external-task client API and a live
-Stardog/Camunda setup; the later callback corrections and regression tests
-are not included in this version.
+The code example and notebook retain their original implementation. They require verification against the external-task client API and a live Stardog/Camunda setup; the later callback corrections and regression tests are not included in this version.
 
-Note: Stardog's built-in NL interface (Voicebox) requires a paid tier; the
-free tier is queried via SPARQL/pystardog as shown.
+Note: Stardog's built-in NL interface (Voicebox) requires a paid tier; the free tier is queried via SPARQL/pystardog as shown.
 
 ### 1d. Reasoning (Stardog only)
 
-Stardog infers new facts at query time; the Playground ignores the
-corresponding reasoning axioms. Setup:
+Stardog infers new facts at query time; the Playground ignores the corresponding reasoning axioms. Setup:
 
-- Reasoning type `SL` (the database default) covers RDFS/OWL 2 profiles plus
-  user-defined rules.
-- Enable reasoning per query: Studio *Reasoning* toggle, HTTP parameter
-  `reasoning=true`, or in pystardog `conn.select(query, reasoning=True)`.
-- Load the rule layer: `ontology/procurement-rules.ttl` into the
-  `procurement` database (Studio Load Data or
-  `conn.add(stardog.content.File(...))`) — Stardog detects IF/THEN rules in
-  Turtle files automatically.
+- Reasoning type `SL` (the database default) covers RDFS/OWL 2 profiles plus user-defined rules.
+- Enable reasoning per query: Studio *Reasoning* toggle, HTTP parameter `reasoning=true`, or in pystardog `conn.select(query, reasoning=True)`.
+- Load the rule layer: `ontology/procurement-rules.ttl` into the `procurement` database (Studio Load Data or `conn.add(stardog.content.File(...))`) — Stardog detects IF/THEN rules in Turtle files automatically.
 
 | # | Demo | Mechanism | Reasoning OFF | Reasoning ON |
 |---|------|-----------|---------------|--------------|
@@ -314,18 +226,9 @@ SELECT ?o WHERE { ?o a :HighValueOrder }       -- ON: 1002, 1004, 1006
 SELECT ?v WHERE { ?v a :ApprovalViolation }    -- ON: 1006
 ```
 
-Punchline for the course: with rule 2 loaded, the validation check in 1c
-collapses to `ASK { :purchase_orders/1006 a :ApprovalViolation }` — the
-business logic moves from the query into the knowledge graph itself. The
-derived classes `:HighValueOrder` and `:ApprovalViolation` are deliberately
-*not* declared in `procurement-ontology.rdf`, so the Playground
-import stays clean (declared entity types there require identifiers and
-bindings).
+Punchline for the course: with rule 2 loaded, the validation check in 1c collapses to `ASK { :purchase_orders/1006 a :ApprovalViolation }` — the business logic moves from the query into the knowledge graph itself. The derived classes `:HighValueOrder` and `:ApprovalViolation` are deliberately *not* declared in `procurement-ontology.rdf`, so the Playground import stays clean (declared entity types there require identifiers and bindings).
 
-Compatibility notes: the Playground imports `partOf` as a normal
-self-relationship and ignores `owl:TransitiveProperty`; the subclass axiom is
-likewise ignored by flat models. The rules file is Stardog-specific (SRS;
-Stardog can translate to SWRL where expressible).
+Compatibility notes: the Playground imports `partOf` as a normal self-relationship and ignores `owl:TransitiveProperty`; the subclass axiom is likewise ignored by flat models. The rules file is Stardog-specific (SRS; Stardog can translate to SWRL where expressible).
 
 ---
 
@@ -378,12 +281,6 @@ SELECT ?person ?name WHERE {
 
 ## Teaching notes
 
-- The business policy is reflected in process routing, query-based checks,
-  and rule-based classification. These mechanisms address different aspects
-  of the policy and are not interchangeable.
-- With the same ontology and data, Stardog derives new facts through
-  subclass, range, transitivity and rules; the Ontology Playground provides
-  a visual model.
-- Edge cases in the data: order 1005 (9,999.99 — just below the threshold),
-  order 1006 (pending high-value, low-rated supplier — the risk case and the
-  rule violation), order 1004 (rejected by a manager).
+- The business policy is reflected in process routing, query-based checks, and rule-based classification. These mechanisms address different aspects of the policy and are not interchangeable.
+- With the same ontology and data, Stardog derives new facts through subclass, range, transitivity and rules; the Ontology Playground provides a visual model.
+- Edge cases in the data: order 1005 (9,999.99 — just below the threshold), order 1006 (pending high-value, low-rated supplier — the risk case and the rule violation), order 1004 (rejected by a manager).
