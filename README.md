@@ -39,7 +39,7 @@ The stacked blocks group responsibilities; their vertical position does not pres
 | **6 · Applications & workflow** | Route a high-value order to a manager; coordinate the human approval task. | [Purchase order approval process](process/purchase-order-approval.bpmn). |
 | **5 · Query, rules & reasoning** | Check whether an order above 10,000 has a manager approver; derive classifications and indirect department membership. | [Validation notebook](notebooks/validate_order_worker.ipynb), [rule definitions](ontology/procurement-rules.ttl), and the query examples below. |
 | **4 · Ontology** | Define `PurchaseOrder`, `Employee`, `Manager`, `Supplier`, `Department` and relationships such as `approvedBy`, `hasSupplier` and `partOf`. | [Procurement ontology](ontology/procurement-ontology.rdf), also used for visual exploration. |
-| **3 · Analytical semantic layer** | Define order counts and spend by department or supplier country, with explicit currency handling. | No analytical semantic model is supplied. These are possible exercises, not implemented artifacts. |
+| **3 · Analytical semantic layer** | Define order counts and approved order value by department and currency. | [Analytical view](db/analytical_views.sql): a minimal SQL implementation of named metrics, not a complete BI semantic model. |
 | **2 · Schema & mappings** | Connect order IDs, amounts and foreign keys to domain entities and properties. | [Relational schema](db/schema.sql) and `map:` annotations in the [ontology](ontology/procurement-ontology.rdf). The annotations document intended mappings; they do not execute them. |
 | **1 · Data** | Actual purchase orders, employees, suppliers and departments, including pending order 1006. | [purchase_orders.csv](data/purchase_orders.csv), [employees.csv](data/employees.csv), [suppliers.csv](data/suppliers.csv), [departments.csv](data/departments.csv). |
 
@@ -74,7 +74,8 @@ decision-ontology-workflow-lab/
 │   ├── suppliers.csv
 │   └── purchase_orders.csv
 ├── db/
-│   └── schema.sql
+│   ├── schema.sql
+│   └── analytical_views.sql        # optional analytical semantic layer
 └── notebooks/
     └── validate_order_worker.ipynb # runnable worker for variant 1c
 ```
@@ -88,6 +89,7 @@ decision-ontology-workflow-lab/
 | `ontology/procurement-rules.ttl` | Stardog-only rule layer (Stardog Rule Syntax): derives `:HighValueOrder` and `:ApprovalViolation` memberships at query time. Not imported into the Playground. |
 | `data/*.csv` | Instance data (English). FK integrity holds; `departments` includes a 3-level hierarchy (`parent_id`) for transitivity demos. |
 | `db/schema.sql` | Matching relational schema incl. `CREATE DATABASE` (server-side; skip that section for the SQLite/sql.js import). Table names = CSV file stems = `map:sourceTable` values. |
+| `db/analytical_views.sql` | Optional view defining procurement metrics by department and currency over the existing relational tables. |
 | `notebooks/validate_order_worker.ipynb` | Runnable external-task worker for variant 1c (Deepnote-ready, env-var based). |
 
 Naming conventions: table `purchase_orders` ↔ class `PurchaseOrder`; column `amount` ↔ property `amount`; PK column `id` ↔ `{Class}Id`; column `name` ↔ `{Class}Name`; `Manager` instances come from `employees` with row filter `is_manager=true` (or are inferred — see 1d).
@@ -278,6 +280,27 @@ SELECT ?person ?name WHERE {
   ?person a :Employee ; :employeeName ?name .
 } ORDER BY ?name
 ```
+
+## Optional exercise — analytical semantic layer
+
+The [analytical view](db/analytical_views.sql) adds reusable metric definitions over the existing tables. It is independent of the ontology and workflow: no changes to the RDF model, CSV files, notebook or BPMN are needed.
+
+1. Create the tables with `db/schema.sql` and import the four CSVs into their matching tables (headers are column names; empty fields become NULL). For SQLite/sql.js, skip the server-side database setup in `schema.sql`.
+2. Run `db/analytical_views.sql` once in the same database to create `procurement_metrics`.
+3. Query the defined metrics:
+
+```sql
+SELECT department_name, currency,
+       order_count, pending_order_count, approved_order_value
+FROM procurement_metrics
+ORDER BY department_id, currency;
+```
+
+Each row represents the submitting employee's directly assigned department and one currency. `order_count` counts all orders, `pending_order_count` counts orders with status `pending`, and `approved_order_value` sums amounts with status `approved`. The last metric reflects the recorded status, not a separate authorization check or actual expenditure. Missing department assignments remain in a NULL department group. There is no hierarchy rollup or currency conversion; do not sum monetary values across currencies.
+
+With the supplied CSVs, Procurement/CHF has two orders, one pending order and an approved order value of 12,500.00 CHF; Engineering/CHF has two orders, none pending and an approved order value of 10,849.99 CHF.
+
+**Student task:** predict the results before running the query, then explain why pending and rejected orders count toward `order_count` but not `approved_order_value`. Discuss how the metric definition would change if the business wanted the value of pending orders instead. This view demonstrates layer 3 through explicit metric definitions; it does not implement a full BI semantic model or an ontology reasoner.
 
 ## Teaching notes
 
