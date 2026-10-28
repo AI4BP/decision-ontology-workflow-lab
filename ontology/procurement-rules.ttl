@@ -1,10 +1,15 @@
-# Procurement approval policy in Stardog Rule Syntax (SRS).
+# Stardog reasoning supplement: one OWL axiom and the approval policy (SRS).
 # Load this Turtle file into urn:Procurement_Lab:Procurement in database procurement.
 # Enable reasoning when querying. No Stride configuration is required.
 # This file supplies the initial baseline. For the exercise, change the stored
 # rule using the SPARQL Update in README step 5; leave this baseline unchanged.
 
 @prefix : <http://example.org/procurement#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+
+# Preserve the transitivity axiom from procurement-ontology.rdf that is not
+# represented by Designer's editable relationship model.
+:partOf a owl:TransitiveProperty .
 
 RULE :ApprovalRequirementRule
 IF {

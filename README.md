@@ -72,10 +72,6 @@ Click **Publish** and complete the three screens:
 
 For data queries, keep **`stardog:context:all`** selected in Studio. The SELECT queries omit `FROM`; the notebook explicitly uses the same dataset, covering both default and named data graphs. The ontology and rule remain in the model graph for reasoning. For a later publication, use **Replace** for the existing model and mappings.
 
-In Studio, add [procurement-ontology.rdf](ontology/procurement-ontology.rdf) to **`urn:Procurement_Lab:Procurement`**, without replacing existing contents. This preserves the complete OWL axioms beyond Designer's editable projection. Load the rule into this same model graph in step 5. If publishing again replaces the model graph, reload the RDF file and rule afterwards.
-
-**Check:** missing foreign keys create no relationship. If you change a CSV later, update its embedded Designer resource as well, including the filtered Manager subset.
-
 ### 4. Explore the populated ontology in Stardog Explorer
 
 Open `procurement` in Explorer and select the published model and data graphs. Find order **1006** and follow its supplier, submitting employee and department. Compare it with order **1002**, which has a positive approval by Alice, and rejected order **1004**, which has no approval edge.
@@ -86,17 +82,19 @@ Open `procurement` in Explorer and select the published model and data graphs. F
 
 ### 5. Extend rules and test SPARQL in Stardog Studio
 
-[procurement-rules.ttl](ontology/procurement-rules.ttl) is the single source for the approval policy. It contains one named rule, `ApprovalRequirementRule`, which classifies orders above 10,000 as `HighValueOrder`. The simplified policy applies the threshold separately in each currency.
+[procurement-rules.ttl](ontology/procurement-rules.ttl) supplies the reasoning additions in **one upload**: the **OWL axiom** `:partOf a owl:TransitiveProperty` from the RDF ontology and the named **business rule** `ApprovalRequirementRule`. Despite its filename, this Turtle file contains both an ontology axiom and a rule. The rule classifies orders above 10,000 as `HighValueOrder`; the simplified policy applies this threshold separately in each currency. No separate RDF import is needed.
 
 In Studio:
 
 1. Open **Databases → procurement → Load Data**.
-2. Select `ontology/procurement-rules.ttl`, use format **Turtle**, and set the target named graph to **`urn:Procurement_Lab:Procurement`**. Add the file to this graph without replacing the ontology.
+2. Select `ontology/procurement-rules.ttl`, use format **Turtle**, and set the target named graph to **`urn:Procurement_Lab:Procurement`**. Add the file to this graph without replacing its existing contents. This loads both the missing OWL axiom and the business rule.
 3. Use the model graph already registered by Designer; no database-property changes are required. Stardog accepts the file's `RULE … IF … THEN` syntax as an extension of Turtle; it is not a SPARQL query to execute in a query tab. See [Stardog's rule syntax](https://docs.stardog.com/inference-engine/user-defined-rules).
 
 The rule is stored in Stardog and its results are inferred when querying with reasoning enabled. No Stride configuration is required.
 
 **Readable prefixes:** use `proc:` for ontology terms. For compact results in Studio, open **Databases → procurement → Namespaces**, keep or add `proc` → `http://example.org/procurement#` and add `po` → `http://example.org/procurement#purchase_orders/`, then save. Studio can display an order as `po:1002`. Prefixes abbreviate existing IRIs; they do not change identifiers or graph locations. The queries retain explicit `PREFIX` declarations so they also work in Python. Python's JSON results still contain full IRIs. See [Stardog namespaces](https://docs.stardog.com/operating-stardog/database-administration/managing-databases#namespaces).
+
+**Before running the queries:** in Workspace, select database **`procurement`** and explicitly choose **`stardog:context:all`** in the graph dropdown immediately to its right. Check this selection when opening a new query tab; do not leave it blank. Use this data context for both order and department queries.
 
 Run this query with reasoning **off**, then **on**:
 
