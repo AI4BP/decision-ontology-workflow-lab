@@ -2,12 +2,9 @@
 
 A minimal but complete, consistent teaching package for ontology-grounded
 decision workflows: one business rule, expressed in a BPMN process, an OWL
-ontology, and a small relational dataset — wired into two implementation
-variants (Stardog Cloud and Microsoft Fabric IQ + Foundry IQ agent), plus a
-Stardog-only reasoning layer.
+ontology, and a small relational dataset.
 
-Technology scope: Microsoft (Ontology Playground, Fabric IQ, Foundry IQ,
-Power BI), Stardog (Cloud Free: Studio, Designer, Explorer), Python
+Technology scope: Ontology Playground, Stardog (Cloud Free: Studio, Designer, Explorer), Python
 (pystardog, martinlab-utils), BPMN (Camunda BPM 7 / CIB seven), CSV and plain
 SQL.
 
@@ -15,6 +12,86 @@ SQL.
 *Manager*; orders at or below 10,000 are auto-approved.
 
 ![Purchase order approval process (BPMN)](process/purchase-order-approval.png)
+
+## Conceptual architecture: from data to decisions
+
+The six layers below separate responsibilities in this lab. They are a
+**teaching model**, synthesized from the sources below, rather than a
+standardized architecture or a mandatory processing pipeline. Layers can
+share an implementation; the analytical semantic layer is optional.
+
+```mermaid
+block-beta
+    columns 1
+    L6["6 · APPLICATIONS & WORKFLOW<br/>Where are results used?<br/>Decisions · Human tasks · Automated actions · Reporting"]
+    L5["5 · QUERY, RULES & REASONING<br/>How are results obtained?<br/>Retrieval · Checks · Inference · Event evaluation"]
+    L4["4 · ONTOLOGY<br/>What do business concepts and relationships mean?<br/>Domain concepts · Properties · Relationships · Axioms"]
+    L3["3 · ANALYTICAL SEMANTIC LAYER<br/>How are business metrics defined?<br/>Measures · Dimensions · Aggregation · Filter context"]
+    L2["2 · SCHEMA & MAPPINGS<br/>How are data structures connected to business terms?<br/>Structures · Keys · Identifiers · Mappings · Bindings"]
+    L1["1 · DATA<br/>What are the actual records?<br/>Entities · Relationships · Values · Observations"]
+
+    style L6 fill:#e0e7ff,stroke:#4338ca,color:#0f172a
+    style L5 fill:#ede9fe,stroke:#7c3aed,color:#0f172a
+    style L4 fill:#ccfbf1,stroke:#0f766e,color:#0f172a
+    style L3 fill:#fef3c7,stroke:#b45309,color:#0f172a,stroke-dasharray:5 5
+    style L2 fill:#e2e8f0,stroke:#475569,color:#0f172a
+    style L1 fill:#f1f5f9,stroke:#64748b,color:#0f172a
+```
+
+The stacked blocks group responsibilities; their vertical position does not
+prescribe execution order or require every application to pass through every
+layer. Ontologies and analytical models can be developed independently and
+connected through mappings. Applications can consume records, graph queries
+or analytical measures according to their needs.
+
+### Connection to the purchase order use case
+
+| Layer | Purchase order example | Existing lab artifacts |
+|---|---|---|
+| **6 · Applications & workflow** | Route a high-value order to a manager; coordinate the human approval task. | [Purchase order approval process](process/purchase-order-approval.bpmn). |
+| **5 · Query, rules & reasoning** | Check whether an order above 10,000 has a manager approver; derive classifications and indirect department membership. | [Validation notebook](notebooks/validate_order_worker.ipynb), [rule definitions](ontology/procurement-rules.ttl), and the query examples below. |
+| **4 · Ontology** | Define `PurchaseOrder`, `Employee`, `Manager`, `Supplier`, `Department` and relationships such as `approvedBy`, `hasSupplier` and `partOf`. | [Procurement ontology](ontology/procurement-ontology.rdf), also used for visual exploration. |
+| **3 · Analytical semantic layer** | Define order counts and spend by department or supplier country, with explicit currency handling. | No analytical semantic model is supplied. These are possible exercises, not implemented artifacts. |
+| **2 · Schema & mappings** | Connect order IDs, amounts and foreign keys to domain entities and properties. | [Relational schema](db/schema.sql) and `map:` annotations in the [ontology](ontology/procurement-ontology.rdf). The annotations document intended mappings; they do not execute them. |
+| **1 · Data** | Actual purchase orders, employees, suppliers and departments, including pending order 1006. | [purchase_orders.csv](data/purchase_orders.csv), [employees.csv](data/employees.csv), [suppliers.csv](data/suppliers.csv), [departments.csv](data/departments.csv). |
+
+### Optional paths and semantic boundaries
+
+- **Direct ontology path:** ontology → mappings/bindings → data. An
+  analytical semantic model is not required. Mapped graph data can be
+  materialized or accessed virtually; the choice is an implementation detail.
+- **Analytical path:** a domain ontology and an analytical semantic model
+  can reuse compatible concepts and mappings. The latter adds metric and
+  aggregation definitions; it is not a prerequisite for the ontology.
+  Generating one model from another requires tool support and semantic review.
+- **Meaning versus execution:** ontology axioms define logical meaning;
+  inference requires an appropriate reasoner. Retrieval, validation checks,
+  deductive inference and event-triggered actions are distinct mechanisms,
+  even though they are grouped in layer 5
+  ([OWL 2 Primer](https://www.w3.org/TR/owl2-primer/),
+  [SPARQL entailment regimes](https://www.w3.org/TR/sparql11-entailment/)).
+  In this lab, the missing-approver query checks the available data. Under
+  an open-world interpretation, missing information alone does not establish
+  a logical violation.
+
+### Where does the knowledge graph fit?
+
+The **knowledge graph** is the connected representation of entities,
+relationships and facts used across these responsibilities. Here, instance facts are organized
+using the procurement ontology; queries may also expose inferred facts.
+A knowledge graph can use RDF or a labeled property graph. An explicit OWL
+ontology is not required by every definition or implementation of a
+knowledge graph; RDF/OWL entailment does not transfer automatically to a
+property graph. This distinction follows the broad treatment in
+[Hogan et al., *Knowledge Graphs*, ACM Computing Surveys (2021)](https://doi.org/10.1145/3447772).
+
+**Example — order 1006:** the CSV provides an amount of 15,250 CHF and no
+approver (1); mappings identify the order and its properties (2); the
+ontology defines `PurchaseOrder` and `approvedBy` (4); the SPARQL check reports the missing manager approval in the available data
+(5); the BPMN gateway routes high-value orders to the manager task (6). Layer 3 is
+unnecessary for this check. For analytical spend totals across the sample's
+CHF, EUR and USD orders, group by currency or define currency conversion
+explicitly before aggregation.
 
 ## Repository structure
 
@@ -25,8 +102,7 @@ decision-ontology-workflow-lab/
 ├── .gitignore
 ├── .env.example                    # credential variable names (no values)
 ├── process/
-│   ├── purchase-order-approval.bpmn          # external-task variant (1c)
-│   └── purchase-order-approval-agentic.bpmn  # AI-agent/MCP variant (2h)
+│   └── purchase-order-approval.bpmn          # external-task variant (1c)
 ├── ontology/
 │   ├── procurement-ontology.rdf
 │   └── procurement-rules.ttl       # Stardog-only reasoning layer
@@ -46,8 +122,8 @@ decision-ontology-workflow-lab/
 | File | Purpose |
 |---|---|
 | `process/purchase-order-approval.bpmn` | BPMN 2.0 process for Camunda BPM 7 / CIB seven: external service task `Validate order (SPARQL)` (topic `validate-order`), exclusive gateway (the decision), user task `Manager approval`, service task `Auto-approve order` (topic `auto-approve`). Opens in Camunda Modeler or bpmn.io. |
-| `ontology/procurement-ontology.rdf` | OWL ontology (RDF/XML). `ont:` annotations (isIdentifier, cardinality, icon, color) follow the Ontology Playground / Fabric IQ conventions; `map:` annotation properties document the DB binding. Reasoning axioms (subclass, transitive `partOf`) are inert in flat tools. |
-| `ontology/procurement-rules.ttl` | Stardog-only rule layer (Stardog Rule Syntax): derives `:HighValueOrder` and `:ApprovalViolation` memberships at query time. Not imported into the Playground / Fabric IQ. |
+| `ontology/procurement-ontology.rdf` | OWL ontology (RDF/XML). `ont:` annotations (isIdentifier, cardinality, icon, color) follow the Ontology Playground conventions; `map:` annotation properties document the DB binding. Reasoning axioms (subclass, transitive `partOf`) are inert in flat tools. |
+| `ontology/procurement-rules.ttl` | Stardog-only rule layer (Stardog Rule Syntax): derives `:HighValueOrder` and `:ApprovalViolation` memberships at query time. Not imported into the Playground. |
 | `data/*.csv` | Instance data (English). FK integrity holds; `departments` includes a 3-level hierarchy (`parent_id`) for transitivity demos. |
 | `db/schema.sql` | Matching relational schema incl. `CREATE DATABASE` (server-side; skip that section for the SQLite/sql.js import). Table names = CSV file stems = `map:sourceTable` values. |
 | `notebooks/validate_order_worker.ipynb` | Runnable external-task worker for variant 1c (Deepnote-ready, env-var based). |
@@ -59,7 +135,7 @@ Naming conventions: table `purchase_orders` ↔ class `PurchaseOrder`; column
 
 ---
 
-## Business Process (Worflow) and Ontology
+## Business Process and Ontology
 
 ### Extend the BPMN model
 
@@ -69,13 +145,11 @@ pure modeling (Camunda BPM 7 / CIB seven external-task pattern):
 - `Validate order (SPARQL)`: **external service task** with topic
   `validate-order`. The process engine only sees a topic; the implementation
   is provided later by the Python worker (variant 1c).
-- `Manager approval`: **user task** for the human decision — the point where
-  the Foundry IQ agent (variant 2f/2g) supports the approver.
+- `Manager approval`: **user task** for the human decision.
 
 Open `process/purchase-order-approval.bpmn` in Camunda Modeler or bpmn.io and
 inspect the gateway conditions `${amount > 10000}` / `${amount <= 10000}` —
-the same rule reappears as SPARQL (1c), as a Stardog inference rule (1d), as
-a Fabric IQ rule (2d) and in the agent's system prompt (2g).
+the same rule reappears as SPARQL (1c) and as a Stardog inference rule (1d).
 
 ### Import and explore the ontology in the Ontology Playground
 
@@ -90,9 +164,8 @@ Manual import and exploration:
 3. Explore: identifiers render with the 🔑 icon, relationships show
    cardinalities (note the self-relationship `partOf` on Department), classes
    show their icons/colors. Validation should report no issues.
-4. Optional: re-export as RDF/XML — the round-trip stays Fabric-IQ-compatible
-   for variant 2. The transitivity axiom and the subclass axiom are ignored
-   by the flat model — by design.
+4. Optional: re-export as RDF/XML. The transitivity axiom and the subclass
+   axiom are ignored by the Playground's flat model — by design.
 
 ![Procurement ontology in the Ontology Playground](ontology/procurement-ontology-graph.png)
 
@@ -184,14 +257,23 @@ Expected behaviour with the sample data: order **1006** → `valid: False`
 With reasoning enabled (1d), the `?m a :Manager` check works even though no
 manager is explicitly typed in the mapped data.
 
+`valid` is a diagnostic approval check: a pending high-value order can
+return false before the Manager approval task. The existing BPMN does not
+use it as a release gate. The example does not provide persistence of human
+decisions back to Stardog or CSV.
+
+The code example and notebook retain their original implementation. They
+require verification against the external-task client API and a live
+Stardog/Camunda setup; the later callback corrections and regression tests
+are not included in this version.
+
 Note: Stardog's built-in NL interface (Voicebox) requires a paid tier; the
 free tier is queried via SPARQL/pystardog as shown.
 
-### 1d. Reasoning (Stardog only — the differentiator vs. Fabric IQ)
+### 1d. Reasoning (Stardog only)
 
-Stardog infers new facts at query time; Fabric IQ and the Playground do not
-reason and simply ignore the corresponding axioms — which is exactly why the
-package stays compatible. Setup:
+Stardog infers new facts at query time; the Playground ignores the
+corresponding reasoning axioms. Setup:
 
 - Reasoning type `SL` (the database default) covers RDFS/OWL 2 profiles plus
   user-defined rules.
@@ -236,198 +318,14 @@ Punchline for the course: with rule 2 loaded, the validation check in 1c
 collapses to `ASK { :purchase_orders/1006 a :ApprovalViolation }` — the
 business logic moves from the query into the knowledge graph itself. The
 derived classes `:HighValueOrder` and `:ApprovalViolation` are deliberately
-*not* declared in `procurement-ontology.rdf`, so the Playground/Fabric IQ
+*not* declared in `procurement-ontology.rdf`, so the Playground
 import stays clean (declared entity types there require identifiers and
 bindings).
 
-Compatibility notes: the Playground and Fabric IQ import `partOf` as a normal
-self-relationship and ignore `owl:TransitiveProperty`; the subclass axiom is
+Compatibility notes: the Playground imports `partOf` as a normal
+self-relationship and ignores `owl:TransitiveProperty`; the subclass axiom is
 likewise ignored by flat models. The rules file is Stardog-specific (SRS;
 Stardog can translate to SWRL where expressible).
-
----
-
-## Variant 2 — Fabric IQ + Foundry IQ agent (current preview)
-
-### 2a. Prepare the data (lakehouse)
-
-1. In Microsoft Fabric, create a lakehouse `procurement` (Fabric capacity and
-   the IQ preview tenant settings must be enabled).
-2. Upload the four CSVs from `data/` to the lakehouse *Files* area.
-3. **Load to tables**, so the tables `departments`, `employees`, `suppliers`,
-   `purchase_orders` match `db/schema.sql`.
-
-### 2b. Load or generate the ontology
-
-- **Primary path — import:** import `ontology/procurement-ontology.rdf` into
-  a new ontology (preview) item; the file follows the Playground/Fabric IQ
-  RDF conventions (`ont:isIdentifier`, `ont:cardinality`, …). If the import
-  option is not available in your tenant's preview build, recreate the model
-  manually — the Playground serves as the visual blueprint.
-- **Alternative — generate:** build a Power BI semantic model over the four
-  lakehouse tables (see 2c) and generate the ontology from it, then refine
-  entity types, keys and relationships.
-- Either way: **bind** each entity type to its lakehouse table — the key
-  column on the source side must match the entity key (e.g.
-  `purchase_orders.id` ↔ `orderId`).
-
-### 2c. Optional: Power BI dashboard
-
-Build a small dashboard on a semantic model over the lakehouse tables:
-
-- KPI card: count of high-value orders (`amount > 10000`)
-- Bar chart: order amount by supplier country
-- Matrix: budget vs. actual spend per department
-- Table: pending orders with submitter and supplier rating
-
-Bonus loop: the same semantic model is the input for ontology generation in
-2b — a nice demonstration that semantic model and ontology are two views of
-the same business vocabulary.
-
-### 2d. Define the business rule in the ontology
-
-Fabric IQ ontology rules define **conditions and actions on business
-entities** (not on raw tables); they are evaluated by **Fabric Activator**,
-which monitors the bound data and triggers actions when conditions hold:
-
-1. On entity type `PurchaseOrder`: **⋯ → Add and view rule → View rules →
-   Add rule**.
-2. Condition: `amount > 10000` **and** `approvedBy` is empty (status
-   `pending`).
-3. Action: Activator alert — Teams message or e-mail to the responsible
-   manager ("Order {orderId} requires your approval").
-4. Save (rules are stored in a Fabric Activator item) and start the rule with
-   the toggle.
-
-This is the same business rule in its fourth formalism — after the BPMN
-gateway, the SPARQL ASK (1c) and the Stardog rule (1d). Comparison
-point for class: the Fabric IQ rule is *reactive* (fires on data changes),
-while the SPARQL check is *on demand* and the Stardog rule is *deductive*
-(derives a classification).
-
-### 2e. Explore with the built-in ontology graph
-
-1. In the ontology item, select entity type `PurchaseOrder` → **View entity
-   type details**: the **Instances** tab shows the real rows from the
-   lakehouse; the **Overview** page gives data previews.
-2. Open the **graph view** (expand a graph tile — powered by Graph in
-   Fabric): start at order 1006 and expand to its supplier, submitter and
-   (missing) approver.
-3. Try the **Query builder** to filter across entity types without writing
-   SQL joins — e.g. high-value orders from suppliers with rating below 3.5.
-
-### 2f. Build a Foundry IQ agent grounded in the ontology
-
-Prerequisites: an Azure subscription with a Foundry project; a Fabric
-workspace containing the ontology item; the AI Search role *Search Index Data
-Contributor* assigned to the Foundry project's managed identity (otherwise
-the agent fails with a 403); Edge or Chrome, signed in with an identity that
-can access both the Foundry project and the Fabric workspace.
-
-1. Foundry portal → **Knowledge → Knowledge bases → + New knowledge base** →
-   knowledge type **Fabric IQ**.
-2. In the embedded **OneLake catalog**, browse to your Fabric workspace and
-   select the ontology item (only items your identity can read are visible).
-3. Give the knowledge source a name and a description of the business domain.
-   Then configure the knowledge base: the **description** is used by the
-   agent at runtime to decide when to consult this knowledge base — write it
-   from the agent's point of view, e.g.:
-
-   ```text
-   Procurement domain: purchase orders with amounts, currencies and statuses,
-   the employees who submit them, the managers who approve them, suppliers
-   with ratings, and departments with budgets. Consult this knowledge base
-   for any question about orders, approvals, suppliers, or procurement
-   budgets.
-   ```
-
-   Example retrieval instruction: *"Only return answers supported by the
-   ontology data; combine entities via their relationships when needed."*
-4. Save the knowledge base and validate it with test queries.
-
-### 2g. System prompt and example user prompts (Manager approval task)
-
-Create the agent: **Agents → + New agent** → name `procurement-approval-agent`,
-pick a model deployment, paste the system prompt, then **Knowledge → + Add
-knowledge** → select the knowledge base from 2f. Save and test in the **Chat**
-pane; iterate on the system prompt and the KB description if the agent skips
-the knowledge base or produces ungrounded answers.
-
-**System prompt (agent instructions):**
-
-```text
-You are the Procurement Approval Assistant supporting managers in the
-"Manager approval" step of the purchase order workflow.
-
-Business rule: orders with an amount above 10,000 (any currency) require
-approval by a Manager (relationship approvedBy). Orders at or below 10,000
-are auto-approved and never reach this task.
-
-When asked about an order or pending approvals, always report: order id,
-amount and currency, supplier (name, country, rating), submitting employee,
-and status. Flag orders above 10,000 from suppliers with a rating below 3.5
-as RISK. Answer only from the connected ontology data; if information is
-missing, say so explicitly. Never invent orders, people, or approvals.
-```
-
-**Example user prompts:**
-
-```text
-Which pending orders still need manager approval?
-Show order 1006: amount, supplier, supplier rating, and who submitted it.
-Are there high-value orders from suppliers with a rating below 3.5?
-Which managers approved orders in August 2026, and what is the total amount per manager?
-List all orders above 10,000 without an approver, grouped by supplier country.
-```
-
-### 2h. Alternative: Validate Order as an agentic service task (MCP)
-
-The service task `Validate order` can also be implemented **agentically**
-instead of with the deterministic SPARQL worker (1c) — same task, same
-contract (a `valid` verdict), different enforcement. The model file
-`process/purchase-order-approval-agentic.bpmn` wires the task to the
-**CIB seven AI Agent connector**, which uses the **Fabric IQ ontology as an
-MCP server**.
-
-Fabric IQ side (ontology as MCP server, preview):
-
-1. Open the ontology item in Fabric and read the IDs from the browser URL:
-   `https://app.fabric.microsoft.com/groups/<workspace-id>/ontologies/<ontology-item-id>`.
-2. Build the MCP server URL:
-   `https://api.fabric.microsoft.com/v1/mcp/dataPlane/workspaces/<workspace-id>/items/<ontology-item-id>/ontologyEndpoint`.
-
-CIB seven side (AI Agent connector, since 2.2):
-
-- Apply the template **CIB seven - AI Agent** (id
-  `org.cibseven.connect.ai.agent`, connectorId `cibseven-ai-agent`) to the
-  service task.
-- Key inputs: `agentName` and `message` (required); `instruction` carries the
-  business rule and the output contract; `mcpServers` registers the ontology
-  endpoint as a JSON array:
-
-  ```json
-  [{"name": "fabriciq",
-    "url": "https://api.fabric.microsoft.com/v1/mcp/dataPlane/workspaces/${fabricWorkspaceId}/items/${fabricOntologyId}/ontologyEndpoint",
-    "headers": {"Authorization": "Bearer ${fabricToken}"}}]
-  ```
-
-  The `name` becomes the tool prefix: the model sees the ontology tools as
-  `fabriciq__<tool>`.
-- The agent's answer arrives as plain text in `${output}`; the instruction
-  forces JSON (`{"valid": true|false, "reason": "..."}`), which a following
-  step parses with Spin, e.g. `${S(agentOutput).prop("valid").booleanValue()}`.
-  Keep a fallback path for unparseable output.
-- Mark the task `camunda:asyncBefore="true"` so the job executor handles
-  retries (LLM calls are slow and can fail transiently).
-- Audit: every MCP tool call is recorded in the chat-log variable with
-  provenance (server prefix, URL, original tool name), and the output is
-  marked AI-generated via `${outputAiMeta}` — the audit trail for the
-  agentic verification path.
-
-Teaching contrast: 1c is deterministic (a SPARQL ASK — reproducible, exact),
-2h is agentic (tool use grounded in the ontology MCP server — flexible,
-non-deterministic, but audited). The process contract is identical: a
-`valid` flag for the order.
 
 ---
 
@@ -480,19 +378,12 @@ SELECT ?person ?name WHERE {
 
 ## Teaching notes
 
-- The same rule now lives in **five** formalisms: BPMN gateway conditions
-  (`${amount > 10000}`), the SPARQL ASK in the external task worker, the
-  Stardog inference rule, the Fabric IQ rule (Activator), and the agent's
-  system prompt. Comparing deterministic (process, query, rule engine) vs.
-  reactive (Activator) vs. probabilistic (agent) rule enforcement is the core
-  exercise.
-- The `Validate order` task has two interchangeable implementations:
-  deterministic (SPARQL worker, 1c) and agentic (MCP tool use, 2h) — same
-  contract, different enforcement; compare their audit trails (worker logs
-  vs. engine history plus MCP provenance in the chat log).
-- Reasoning is the clean Stardog-vs-Fabric-IQ contrast: same files, same
-  data — but only Stardog derives new facts (subclass, range, transitivity,
-  rules).
+- The business policy is reflected in process routing, query-based checks,
+  and rule-based classification. These mechanisms address different aspects
+  of the policy and are not interchangeable.
+- With the same ontology and data, Stardog derives new facts through
+  subclass, range, transitivity and rules; the Ontology Playground provides
+  a visual model.
 - Edge cases in the data: order 1005 (9,999.99 — just below the threshold),
   order 1006 (pending high-value, low-rated supplier — the risk case and the
   rule violation), order 1004 (rejected by a manager).
